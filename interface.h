@@ -24,16 +24,30 @@ struct if_to_id {
 
     int instr_size;
     uint32_t instr[4];
+    uint32_t fetch_pc;
 };
 
 struct id_to_if {
     bool allow_in;
+    int instr_allow_size;
 };
 
 // ID to RN
 
+enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
+enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
+
 struct decode_info {
     // every instruction has a decode info
+    bool is_branch;
+    bool is_lsu;
+    bool is_load, is_store;
+    int lsu_type;
+    bool is_alu;
+    int alu_type;
+    int rs1, rs2, rd;
+    uint32_t imm;
+    uint32_t pc;
 };
 
 struct id_to_rn {
@@ -45,8 +59,27 @@ struct id_to_rn {
 
 struct rn_to_id {
     bool allow_in;
+
+    int rename_size;
 };
 
+// RN to IS
+struct issue_info {
+    // foo
+};
+
+struct rn_to_is {
+    bool valid;
+
+    int issue_size;
+    struct issue_info renamed[4];
+};
+
+struct is_to_rn {
+    bool allow_in;
+    
+    int issue_size;
+};
 
 // RN to EX
 
