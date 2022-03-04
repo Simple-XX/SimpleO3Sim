@@ -36,6 +36,7 @@ struct id_to_if {
 
 enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
 enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
+enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
 
 struct decode_info {
     // every instruction has a decode info
@@ -48,6 +49,7 @@ struct decode_info {
     int rs1, rs2, rd;
     uint32_t imm;
     uint32_t pc;
+    int instr_type;
 };
 
 struct id_to_rn {
@@ -64,15 +66,16 @@ struct rn_to_id {
 };
 
 // RN to IS
-struct issue_info {
-    // foo
+struct rename_info {
+    int rs1_phy, rs2_phy, rd_phy;
 };
 
 struct rn_to_is {
     bool valid;
 
     int issue_size;
-    struct issue_info renamed[4];
+    struct decode_info decoded[4];
+    struct rename_info renamed[4];
 };
 
 struct is_to_rn {
@@ -99,7 +102,7 @@ struct ex_lsuInfo {
     // foo
 };
 
-struct rn_to_ex {
+struct is_to_ex {
     bool valid;
 
     // to every execution unit
@@ -109,7 +112,7 @@ struct rn_to_ex {
     struct ex_lsuInfo lsu;
 };
 
-struct ex_to_rn {
+struct ex_to_is {
     bool jmp_allowin;
     bool alu_allowin[3];
     bool mdu_allowin[2];

@@ -7,7 +7,7 @@ struct id_to_if id_to_if_sig[2];
 struct id_to_rn id_to_rn_sig[2];
 extern struct rn_to_id rn_to_id_sig[2];
 
-static uint32_t decode_quque[DECODE_QUEUE_SIZE];
+static uint32_t decode_queue[DECODE_QUEUE_SIZE];
 static uint32_t decode_pc[DECODE_QUEUE_SIZE];
 static int decode_queue_start = 0, decode_queue_end = 0, queue_size = 0;
 
@@ -102,18 +102,22 @@ struct decode_info decode(const uint32_t instr) {
                    ori | or ? OR :
                    andi | and ? AND :
                    slli | sll ? SLL :
-                   srli | slr ? SRL :
+                   srli | srl ? SRL :
                    srai | sra ? SRA :
                    sub ? SUB : 0xff;
-    bool type_i = jalr | lb | lh | lw | lwu | ld | lbu | lhu |
-      addi | addiw | slti | sltiu | xori | ori | andi;
-    bool type_s = sb | sh | sw | sd;
+    bool type_i = jalr | lb | lh | lw | lbu | lhu |
+      addi | slti | sltiu | xori | ori | andi;
+    bool type_s = sb | sh | sw;
     bool type_b = beq | bne | blt | bge | bltu | bgeu;
     bool type_u = lui | auipc;
     bool type_j = jal;
     bool type_r = slli | srli | srai |
       add | sub | sll| slt | sltu | xor | srl |
       sra | or | and;
+
+    if (type_i) ret.instr_type = TYPE_I;
+    else if (type_s) ret.instr_type = TYPE_S;
+
 
     ret.imm = type_i ? imm_expansion(imm_i, 11):
               type_s ? imm_expansion(imm_s, 11):
@@ -124,10 +128,11 @@ struct decode_info decode(const uint32_t instr) {
     ret.rs2 = rs2;
     ret.rd = rd;
     // ret.pc is handled outside
-    ret.imm = 
     return ret;
 }
 
+// FIXME: decode must decide if there are enough rename space
+// i.e. if we have more branch than expected, only send some of them to rename
 void ID_step() {
     // Instruction decode
     if (!(decode_queue_end == decode_queue_start) && rn_to_id_sig[0].allow_in) {
