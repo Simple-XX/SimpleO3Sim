@@ -65,9 +65,14 @@ struct rn_to_id {
     int rename_size;
 };
 
+struct int_pair {
+    int a, b;
+};
+
 // RN to IS
 struct rename_info {
-    int rs1_phy, rs2_phy, rd_phy;
+    int rs1_phy, rs2_phy;
+    struct int_pair rd_phy;
 };
 
 struct rn_to_is {

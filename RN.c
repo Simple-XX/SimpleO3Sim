@@ -39,20 +39,27 @@ int alloc_src(int src) {
     return arf_prf_map[current_jmp][src];
 }
 
-int alloc_dst(int dst) {
+
+struct int_pair alloc_dst(int dst) {
     assert(dst >= 0 && dst < 32);
     // find a free reg and map it as new dst register
     if (dst == 0) return 0;
     assert(prf_free_list_size > 0);
-    int ret = prf_free_list[--prf_free_list_size];
-    arf_prf_map[current_jmp][dst] = ret;
+    int ret_reg = prf_free_list[--prf_free_list_size];
+    // we need to remember its old map so that we can recycle
+    // this reg when we commit
+    int old_reg = arf_prf_map[current_jmp][dst];
+    arf_prf_map[current_jmp][dst] = ret_reg;
+    struct int_pair ret;
+    ret.a = ret_reg;
+    ret.b = old_reg;
     return ret;
 }
 
-int commit_dst(int dst) {
-    assert(dst >= 0 && dst < 32);
+void commit_dst(int dst) {
+    assert(dst >= 0 && dst < PRF_SIZE);
     // since instruction commited, we are free to recycle its previous map
-    // todo
+    prf_free_list[prf_free_list_size++] = dst;
 }
 
 void RN_step() {
