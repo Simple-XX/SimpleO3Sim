@@ -4,6 +4,7 @@
 #include "log.h"
 #include "interface.h"
 #include <stdint.h>
+#include <stdlib.h>
 
 #define RAM_SIZE 0x1000000 // 10 MB
 
@@ -29,7 +30,7 @@ void init_ram() {
     ram_word = (uint32_t *)ram;
 }
 
-void imem_step() {
+void iram_step() {
     // handle instruction memory
     assert(iram_req.wr == 0);
     if (iram_req.valid && iram_req.size > 1) {
@@ -45,7 +46,7 @@ void imem_step() {
     }
 }
 
-void dmem_step() {
+void dram_step() {
     // handle data memory
     if (dram_req.valid) {
         if (dram_req.wr) {

@@ -2,7 +2,9 @@
 #define RN_H
 
 #include "interface.h"
+#include "common.h"
 
+void RN_init();
 void RN_step();
 
 #define PRF_SIZE 96

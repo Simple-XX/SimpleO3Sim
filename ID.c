@@ -95,15 +95,15 @@ struct decode_info decode(const uint32_t instr) {
                  or | and;
     ret.alu_type = lui ? LUI :
                    auipc ? AUIPC :
-                   addi | add ? ADD :
-                   slti | slt ? SLT :
-                   sltu | sltiu ? SLTU :
-                   xori | xor ? XOR :
-                   ori | or ? OR :
-                   andi | and ? AND :
-                   slli | sll ? SLL :
-                   srli | srl ? SRL :
-                   srai | sra ? SRA :
+                   (addi | add) ? ADD :
+                   (slti | slt) ? SLT :
+                   (sltu | sltiu) ? SLTU :
+                   (xori | xor) ? XOR :
+                   (ori | or) ? OR :
+                   (andi | and) ? AND :
+                   (slli | sll) ? SLL :
+                   (srli | srl) ? SRL :
+                   (srai | sra) ? SRA :
                    sub ? SUB : 0xff;
     bool type_i = jalr | lb | lh | lw | lbu | lhu |
       addi | slti | sltiu | xori | ori | andi;
@@ -162,7 +162,7 @@ void ID_step() {
         decode_queue_end = (decode_queue_end + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE;
         queue_size += if_to_id_sig[0].instr_size;
     }
-    if (!decode_queue_end == decode_queue_start - 1) {
+    if (!(decode_queue_end == decode_queue_start - 1)) {
         id_to_if_sig[0].allow_in = true;
         id_to_if_sig[0].instr_allow_size = queue_size;
     }

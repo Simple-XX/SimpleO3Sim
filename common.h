@@ -5,5 +5,5 @@
 
 
 extern char ram_file[PATH_LEN];
-
+#include <assert.h>
 #endif

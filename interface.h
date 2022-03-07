@@ -39,7 +39,7 @@ enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
 enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
 
 struct decode_info {
-    // every instruction has a decode info
+// every instruction has a decode info
     bool is_branch;
     bool is_lsu;
     bool is_load, is_store;
@@ -72,6 +72,7 @@ struct int_pair {
 // RN to IS
 struct rename_info {
     int rs1_phy, rs2_phy;
+    bool rs1_ready, rs2_ready;
     struct int_pair rd_phy;
 };
 
@@ -97,6 +98,10 @@ struct ex_jmpInfo {
 
 struct ex_aluInfo {
     // foo
+
+    // for fake EXU
+    struct decode_info decoded;
+    struct rename_info renamed;
 };
 
 struct ex_mduInfo {
@@ -111,8 +116,12 @@ struct is_to_ex {
     bool valid;
 
     // to every execution unit
+    int jmp_size;
+    int alu_size;
+    int mdu_size;
+    int lsu_size;
     struct ex_jmpInfo jmp;
-    struct ex_aluInfo alu[3];
+    struct ex_aluInfo alu[4];
     struct ex_mduInfo mdu[2];
     struct ex_lsuInfo lsu;
 };
@@ -155,6 +164,18 @@ struct cmt_to_ex {
     bool valid;
 
     // may need more info
+};
+
+struct commit_info {
+    // if an instruction overwrites the dst, we are free to recycle the previous one
+    int recycle_dst;
+};
+
+struct cmt_wakeup_info {
+    bool valid;
+
+    int commit_size;
+    struct commit_info committed[4];
 };
 
 #endif
