@@ -9,7 +9,7 @@ uint32_t fetch_pc = RESET_VEC;
 
 void IF_step() {
     // provide instruction fetch signal
-    iram_req.addr = fetch_pc;
+    iram_req.addr = fetch_pc - 0x80000000;
     iram_req.wr = false;
     iram_req.size = FETCH_WIDTH; // fetch 4 instrs at a time
     iram_req.wdata = 0; // dont care

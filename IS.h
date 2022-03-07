@@ -6,7 +6,7 @@
 
 void IS_step();
 
-#define ISSUE_QUEUE_SIZE 8
+#define ISSUE_QUEUE_SIZE 160
 #define ISSUE_SIZE 4
 
 #endif

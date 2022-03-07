@@ -154,7 +154,7 @@ void ID_step() {
     if (!(decode_queue_end == decode_queue_start - 1) && if_to_id_sig[0].valid) {
         // push some more instrs
         // instruction size should always fit in our queue size
-        assert((decode_queue_end + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE < decode_queue_start);
+        // assert((decode_queue_start + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE < decode_queue_end);
         for (int i = 0; i < if_to_id_sig[0].instr_size; ++i) {
             decode_queue[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].instr[i];
             decode_pc[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].fetch_pc + i * 4;
@@ -163,7 +163,7 @@ void ID_step() {
         queue_size += if_to_id_sig[0].instr_size;
     }
     if (!(decode_queue_end == decode_queue_start - 1)) {
-        id_to_if_sig[0].allow_in = true;
-        id_to_if_sig[0].instr_allow_size = queue_size;
+        id_to_if_sig[1].allow_in = true;
+        id_to_if_sig[1].instr_allow_size = DECODE_QUEUE_SIZE - queue_size > 4 ? 4 : DECODE_QUEUE_SIZE - queue_size;
     }
 }

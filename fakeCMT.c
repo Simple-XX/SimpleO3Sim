@@ -1,5 +1,5 @@
 #include "fakeCMT.h"
-
+#include <stdio.h>
 extern struct cmt_wakeup_info cmt_wakeup_sig[2];
 
 // bypass from ex
@@ -14,6 +14,7 @@ void fakeCMT_step() {
         // only consider alu port
         for (int i = 0; i < is_to_ex_sig[0].alu_size; ++i) {
             // just commit
+            printf("commit info: pc = 0x%x\n", is_to_ex_sig[0].alu[i].decoded.pc);
             cmt_wakeup_sig[1].committed[commit_count++].recycle_dst = is_to_ex_sig[0].alu[i].renamed.rd_phy.b;
         }
         cmt_wakeup_sig[1].commit_size = commit_count;

@@ -1,4 +1,9 @@
+.DS_Store
 a.out
 .vscode/
 o3sim
 o3sim.dSYM
+test.elf
+test.s
+test.bin
+test.o

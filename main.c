@@ -24,7 +24,7 @@ extern struct cmt_wakeup_info cmt_wakeup_sig[2];
 extern struct is_to_ex is_to_ex_sig[2];
 extern struct ex_to_is ex_to_is_sig[2];
 
-char ram_file[PATH_LEN];
+char ram_file[PATH_LEN] = "./test.bin";
 
 void parse_arg(int argc, char* argv[]) {
 	if (argc > 1) {

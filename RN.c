@@ -82,47 +82,53 @@ void RN_step() {
             commit_dst(cmt_wakeup_sig[0].committed[i].recycle_dst);
         }
     }
-
+    
     // rename
-    for (int i = 0; i < id_to_rn_sig[0].decode_size; ++i) {
-        // if we are facing a branch instruction, save snapshot before proceeding
-        if (id_to_rn_sig[0].decoded[i].is_branch) {
-            ++current_jmp;
-            for (int i = 0; i < 31; ++i) {
-                arf_prf_map[current_jmp][i] = arf_prf_map[current_jmp - 1][i];
+    if (id_to_rn_sig[0].valid) {
+        for (int i = 0; i < id_to_rn_sig[0].decode_size; ++i) {
+            // if we are facing a branch instruction, save snapshot before proceeding
+            rn_to_is_sig[1].valid = true;
+            rn_to_is_sig[1].issue_size = 4;
+            if (id_to_rn_sig[0].decoded[i].is_branch) {
+                ++current_jmp;
+                for (int i = 0; i < 31; ++i) {
+                    arf_prf_map[current_jmp][i] = arf_prf_map[current_jmp - 1][i];
+                }
+            }
+            
+            if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_I) {
+                // 1 dest (rd) 1 src (rs1)
+                rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
+                rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
+                rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
+            } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_S) {
+                // 2 src (rs1 rs2)
+                rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
+                rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
+                rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
+                rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
+            } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_B) {
+                // 2 src (rs1 rs2)
+                rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
+                rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
+                rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
+                rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
+            } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_U) {
+                // 1 dest (rd)
+                rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
+            } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_J) {
+                // 1 dest (rd)
+                rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
+            } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_R) {
+                // 1 dest (rd) 2 src (rs1 rs2)
+                rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
+                rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
+                rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
+                rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
+                rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
             }
         }
-        
-        if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_I) {
-            // 1 dest (rd) 1 src (rs1)
-            rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
-            rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
-            rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
-        } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_S) {
-            // 2 src (rs1 rs2)
-            rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
-            rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
-            rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
-            rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
-        } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_B) {
-            // 2 src (rs1 rs2)
-            rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
-            rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
-            rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
-            rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
-        } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_U) {
-            // 1 dest (rd)
-            rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
-        } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_J) {
-            // 1 dest (rd)
-            rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
-        } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_R) {
-            // 1 dest (rd) 2 src (rs1 rs2)
-            rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
-            rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
-            rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
-            rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
-            rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
-        }
-    }    
+    }
+    rn_to_id_sig[1].allow_in = true;
+    rn_to_id_sig[1].rename_size = 4;
 }
