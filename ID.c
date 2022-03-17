@@ -109,6 +109,12 @@ struct decode_info decode(const uint32_t instr) {
       addi | slti | sltiu | xori | ori | andi;
     bool type_s = sb | sh | sw;
     bool type_b = beq | bne | blt | bge | bltu | bgeu;
+    int branch_type = beq ? BEQ :
+                      bne ? BNE :
+                      blt ? BLT :
+                      bge ? BGE :
+                      bltu ? BLTU :
+                      bgeu ? BGEU : 0xff;
     bool type_u = lui | auipc;
     bool type_j = jal;
     bool type_r = slli | srli | srai |

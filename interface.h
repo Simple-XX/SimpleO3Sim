@@ -37,6 +37,7 @@ struct id_to_if {
 enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
 enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
 enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
+enum branch_type {BEQ, BNE, BLT, BGE, BLTU, BGEU};
 
 struct decode_info {
 // every instruction has a decode info
@@ -50,6 +51,7 @@ struct decode_info {
     uint32_t imm;
     uint32_t pc;
     int instr_type;
+    int branch_type;
 };
 
 struct id_to_rn {
@@ -93,24 +95,38 @@ struct is_to_rn {
 // RN to EX
 
 struct ex_jmpInfo {
-    // foo
+    bool valid;
+    struct decode_info decoded;
+    struct rename_info renamed;
 };
 
 struct ex_aluInfo {
-    // foo
-
-    // for fake EXU
+    bool valid;
     struct decode_info decoded;
     struct rename_info renamed;
 };
 
 struct ex_mduInfo {
-    // foo
+    bool valid;
+    struct decode_info decoded;
+    struct rename_info renamed;
 };
 
 struct ex_lsuInfo {
-    // foo
+    bool valid;
+    struct decode_info decoded;
+    struct rename_info renamed;
 };
+
+#define JMP_SIZE 1
+#define ALU_SIZE 3
+#define MDU_SIZE 2
+#define LSU_SIZE 1
+
+#define ALU_DELAY 1
+#define JMP_DELAY 1
+#define MDU_DELAY 2
+#define LSU_DELAY 1
 
 struct is_to_ex {
     bool valid;
@@ -120,17 +136,17 @@ struct is_to_ex {
     int alu_size;
     int mdu_size;
     int lsu_size;
-    struct ex_jmpInfo jmp;
-    struct ex_aluInfo alu[4];
-    struct ex_mduInfo mdu[2];
-    struct ex_lsuInfo lsu;
+    struct ex_jmpInfo jmp[JMP_SIZE];
+    struct ex_aluInfo alu[ALU_SIZE];
+    struct ex_mduInfo mdu[MDU_SIZE];
+    struct ex_lsuInfo lsu[LSU_SIZE];
 };
 
 struct ex_to_is {
-    bool jmp_allowin;
-    bool alu_allowin[3];
-    bool mdu_allowin[2];
-    bool lsu_allowin;
+    bool jmp_allowin[JMP_SIZE];
+    bool alu_allowin[ALU_SIZE];
+    bool mdu_allowin[MDU_SIZE];
+    bool lsu_allowin[LSU_SIZE];
 };
 
 // EX to CMT
@@ -149,6 +165,12 @@ struct mdu_commitInfo {
 
 struct lsu_commitInfo {
     // foo
+};
+
+struct jmp_redirectInfo {
+    // redirect with instruction count number
+    uint32_t redirect_pc;
+    uint64_t instr_idx;
 };
 
 struct ex_to_cmt {
