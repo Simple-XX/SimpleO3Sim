@@ -11,6 +11,8 @@ static uint32_t decode_queue[DECODE_QUEUE_SIZE];
 static uint32_t decode_pc[DECODE_QUEUE_SIZE];
 static int decode_queue_start = 0, decode_queue_end = 0, queue_size = 0;
 
+uint64_t global_instr_idx;
+
 static uint32_t imm_expansion(uint32_t imm, int from_bit) {
     // dup since from_bit
     uint32_t extractor = 1 << from_bit & imm;
@@ -34,6 +36,8 @@ struct decode_info decode(const uint32_t instr) {
     imm_i = (instr >> 20) & 0xfff;
     imm_s = ((instr >> 7) & 0x1f) | (((instr >> 25) & 0x7f) << 5);
     imm_b = ((instr >> 31) << 12) | (((instr >> 25) & 0x3f) << 5) | (((instr >> 8) & 0xf) << 1) | (((instr >> 7) & 0x1) << 11);
+    imm_u = (instr >> 12) << 12;
+    imm_j = ((instr >> 31) << 20) | (((instr >> 12) & 0xff) << 12) | (((instr >> 20) & 1) << 11) | (((instr >> 21) & 0x3ff) << 1);
 
     bool lui, auipc, jal, jalr, beq, bne, blt, bge, bltu, bgeu;
     bool lb, lh, lw, lbu, lhu, sb, sh, sw, addi, slti, sltiu;
@@ -105,6 +109,7 @@ struct decode_info decode(const uint32_t instr) {
                    (srli | srl) ? SRL :
                    (srai | sra) ? SRA :
                    sub ? SUB : 0xff;
+    bool shift_imm = slli | srli | srai;
     bool type_i = jalr | lb | lh | lw | lbu | lhu |
       addi | slti | sltiu | xori | ori | andi;
     bool type_s = sb | sh | sw;
@@ -123,6 +128,10 @@ struct decode_info decode(const uint32_t instr) {
 
     if (type_i) ret.instr_type = TYPE_I;
     else if (type_s) ret.instr_type = TYPE_S;
+    else if (type_b) ret.instr_type = TYPE_B;
+    else if (type_u) ret.instr_type = TYPE_U;
+    else if (type_j) ret.instr_type = TYPE_J;
+    else if (type_r) ret.instr_type = TYPE_R;
 
 
     ret.imm = type_i ? imm_expansion(imm_i, 11):
@@ -133,6 +142,7 @@ struct decode_info decode(const uint32_t instr) {
     ret.rs1 = rs1;
     ret.rs2 = rs2;
     ret.rd = rd;
+    ret.shift_imm = shift_imm;
     // ret.pc is handled outside
     return ret;
 }
@@ -149,6 +159,7 @@ void ID_step() {
             uint32_t instr = decode_queue[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
             id_to_rn_sig[1].decoded[i] = decode(instr);
             id_to_rn_sig[1].decoded[i].pc = decode_pc[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
+            id_to_rn_sig[1].decoded[i].instr_idx = global_instr_idx;
         }
         id_to_rn_sig[1].valid = true;
         id_to_rn_sig[1].decode_size = dequeue_size;

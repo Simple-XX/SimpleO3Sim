@@ -1,5 +1,6 @@
 #include "EX.h"
 #include <assert.h>
+#include "EX_impl.h"
 
 extern struct is_to_ex is_to_ex_sig[2];
 struct is_to_rn ex_to_is_sig[2];
@@ -10,24 +11,23 @@ extern struct cmt_to_ex cmt_to_ex_sig[2];
 
 struct jmp_redirectInfo jmp_redirect[2];
 
-struct ex_jmpInfo jmp_pipeline[JMP_DELAY][JMP_SIZE];
-struct ex_aluInfo alu_pipeline[ALU_DELAY][ALU_SIZE];
-struct ex_mduInfo mdu_pipeline[MDU_DELAY][MDU_SIZE];
-struct ex_lsuInfo lsu_pipeline[LSU_DELAY][LSU_SIZE];
+struct ex_jmpInfo jmp_pipeline[JMP_DELAY][JMP_SIZE + 1];
+struct ex_aluInfo alu_pipeline[ALU_DELAY][ALU_SIZE + 1];
+struct ex_mduInfo mdu_pipeline[MDU_DELAY][MDU_SIZE + 1];
+struct ex_lsuInfo lsu_pipeline[LSU_DELAY][LSU_SIZE + 1];
 
 void jmpUnit() {
     // firstly deal with the result that will come out of this stage
-    for (int i = 0; i < JMP_SIZE; ++i) {
+    for (int i = 0; i <= JMP_SIZE; ++i) {
         if (jmp_pipeline[JMP_DELAY - 1][i].valid) {
             // if we have a valid branch/jmp instruction
-            if (is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_B) {
-                // is ordinary branch
-
-            } else if (is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_J) {
-                // jal
-            } else if (is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_I) {
-                // jalr
-            }
+            JMP_calc(jmp_pipeline[JMP_DELAY - 1][i].decoded, 
+                     jmp_pipeline[JMP_DELAY - 1][i].renamed,
+                     i);
+        } else {
+            // valid signals must be consecutive
+            ex_to_cmt_sig[1].jmp_size = i;
+            break;
         }
     }
     // every other stages move forward
@@ -53,9 +53,11 @@ void jmpUnit() {
 
 void lsUnit() {
     // firstly deal with the result that will come out of this stag
-    for (int i = 0; i < LSU_SIZE; ++i) {
+    for (int i = 0; i <= LSU_SIZE; ++i) {
         if (lsu_pipeline[LSU_DELAY - 1][i].valid) {
             // we have a valid request
+        } else {
+            // valid signals must be consecutive
         }
     }
     // every other stages move forward
@@ -79,9 +81,22 @@ void lsUnit() {
 
 void aluUnit() {
     // firstly deal with the result that will come out of this stage
-    for (int i = 0; i < ALU_SIZE; ++i) {
-        if (lsu_pipeline[ALU_DELAY - 1][i].valid) {
+    for (int i = 0; i <= ALU_SIZE; ++i) {
+        if (alu_pipeline[ALU_DELAY - 1][i].valid) {
             // we have a valid request
+            ALU_calc(alu_pipeline[ALU_DELAY - 1][i].decoded,
+                     alu_pipeline[ALU_DELAY - 1][i].renamed,
+                     i
+            );
+        } else {
+            // valid signals must be consecutive
+            break;
+        }
+    }
+
+    for (int i = 0; i < ALU_DELAY - 1; ++i) {
+        for (int j = 0; j < ALU_SIZE; ++j) {
+            alu_pipeline[i+1][j] = alu_pipeline[i][j];
         }
     }
 
@@ -92,6 +107,14 @@ void aluUnit() {
     }
 }
 
+void mdUnit() {
+    // foo implementation here
+}
+
 void EX_step() {
     // execuction
+    aluUnit();
+    lsUnit();
+    jmpUnit();
+    mdUnit();
 }

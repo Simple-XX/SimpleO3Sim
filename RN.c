@@ -97,6 +97,7 @@ void RN_step() {
             }
             
             if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_I) {
+                rn_to_is_sig[1].renamed[i].rs2_phy = 0;
                 // 1 dest (rd) 1 src (rs1)
                 rn_to_is_sig[1].renamed[i].rs1_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs1);
                 rn_to_is_sig[1].renamed[i].rs1_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs1_phy];
@@ -114,9 +115,13 @@ void RN_step() {
                 rn_to_is_sig[1].renamed[i].rs2_phy = alloc_src(id_to_rn_sig[0].decoded[i].rs2);
                 rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
             } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_U) {
+                rn_to_is_sig[1].renamed[i].rs1_phy = 0;
+                rn_to_is_sig[1].renamed[i].rs2_phy = 0;
                 // 1 dest (rd)
                 rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
             } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_J) {
+                rn_to_is_sig[1].renamed[i].rs1_phy = 0;
+                rn_to_is_sig[1].renamed[i].rs2_phy = 0;
                 // 1 dest (rd)
                 rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
             } else if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_R) {
@@ -127,6 +132,9 @@ void RN_step() {
                 rn_to_is_sig[1].renamed[i].rs2_ready = prf_ready[rn_to_is_sig[1].renamed[i].rs2_phy];
                 rn_to_is_sig[1].renamed[i].rd_phy = alloc_dst(id_to_rn_sig[0].decoded[i].rd);
             }
+
+            rn_to_is_sig[1].renamed[i].rs1_data = prf[rn_to_is_sig[1].renamed[i].rs1_phy];
+            rn_to_is_sig[1].renamed[i].rs2_data = prf[rn_to_is_sig[1].renamed[i].rs2_phy];
         }
     }
     rn_to_id_sig[1].allow_in = true;

@@ -37,7 +37,7 @@ struct id_to_if {
 enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
 enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
 enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
-enum branch_type {BEQ, BNE, BLT, BGE, BLTU, BGEU};
+enum branch_type {BEQ, BNE, BLT, BGE, BLTU, BGEU, JAL, JALR};
 
 struct decode_info {
 // every instruction has a decode info
@@ -52,6 +52,8 @@ struct decode_info {
     uint32_t pc;
     int instr_type;
     int branch_type;
+    bool shift_imm; // only for identification of s{r/l}{l/a}i
+    uint64_t instr_idx;
 };
 
 struct id_to_rn {
@@ -76,6 +78,7 @@ struct rename_info {
     int rs1_phy, rs2_phy;
     bool rs1_ready, rs2_ready;
     struct int_pair rd_phy;
+    uint32_t rs1_data, rs2_data;
 };
 
 struct rn_to_is {
@@ -153,18 +156,31 @@ struct ex_to_is {
 
 struct jmp_commitInfo {
     // foo
+    struct rename_info renamed;
+    bool rd_valid;
+    uint32_t rd_data;
 };
 
 struct alu_commitInfo {
-    // 
+    struct rename_info renamed;
+    bool rd_valid;
+    uint32_t rd_data;
 };
 
 struct mdu_commitInfo {
-    // 
+    struct rename_info renamed;
+    bool rd_valid;
+    uint32_t rd_data;
 };
 
 struct lsu_commitInfo {
-    // foo
+    struct rename_info renamed;
+    bool rd_valid;
+    uint32_t rd_data;
+
+    bool store_valid;
+    uint32_t store_data;
+    uint64_t idx;
 };
 
 struct jmp_redirectInfo {
@@ -176,10 +192,11 @@ struct jmp_redirectInfo {
 struct ex_to_cmt {
     bool valid;
 
-    struct jmp_commitInfo jmp;
-    struct alu_commitInfo alu;
-    struct mdu_commitInfo mdu;
-    struct lsu_commitInfo lsu;
+    int jmp_size, alu_size, mdu_size, lsu_size;
+    struct jmp_commitInfo jmp[JMP_SIZE];
+    struct alu_commitInfo alu[ALU_SIZE];
+    struct mdu_commitInfo mdu[MDU_SIZE];
+    struct lsu_commitInfo lsu[LSU_SIZE];
 };
 
 struct cmt_to_ex {
