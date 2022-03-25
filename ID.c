@@ -1,5 +1,6 @@
 #include "interface.h"
 #include "ID.h"
+#include "common.h"
 
 extern struct if_to_id if_to_id_sig[2];
 struct id_to_if id_to_if_sig[2];
@@ -154,12 +155,17 @@ void ID_step() {
     if (!(decode_queue_end == decode_queue_start) && rn_to_id_sig[0].allow_in) {
         // instructions in queue and we are allowed to enter rename
         int dequeue_size = rn_to_id_sig[0].rename_size;
-        
+        #ifdef DEBUG
+        printf("ID: dequeue size %d\n", dequeue_size);
+        #endif // DEBUG 
         for (int i = 0; i < dequeue_size; ++i) {
             uint32_t instr = decode_queue[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
             id_to_rn_sig[1].decoded[i] = decode(instr);
             id_to_rn_sig[1].decoded[i].pc = decode_pc[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
-            id_to_rn_sig[1].decoded[i].instr_idx = global_instr_idx;
+            id_to_rn_sig[1].decoded[i].instr_idx = global_instr_idx++;
+            #ifdef DEBUG
+            printf("instr: idx %llu, pc 0x%x\n", id_to_rn_sig[1].decoded[i].instr_idx, id_to_rn_sig[1].decoded[i].pc);
+            #endif // DEBUG
         }
         id_to_rn_sig[1].valid = true;
         id_to_rn_sig[1].decode_size = dequeue_size;
@@ -172,6 +178,9 @@ void ID_step() {
         // push some more instrs
         // instruction size should always fit in our queue size
         // assert((decode_queue_start + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE < decode_queue_end);
+        #ifdef DEBUG
+        printf("ID enqueue size %d\n", if_to_id_sig[0].instr_size);
+        #endif // DEBUG
         for (int i = 0; i < if_to_id_sig[0].instr_size; ++i) {
             decode_queue[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].instr[i];
             decode_pc[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].fetch_pc + i * 4;
@@ -180,6 +189,9 @@ void ID_step() {
         queue_size += if_to_id_sig[0].instr_size;
     }
     if (!(decode_queue_end == decode_queue_start - 1)) {
+        #ifdef DEBUG
+        printf("ID allowin size %d\n", id_to_if_sig[1].instr_allow_size);
+        #endif // DEBUG
         id_to_if_sig[1].allow_in = true;
         id_to_if_sig[1].instr_allow_size = DECODE_QUEUE_SIZE - queue_size > 4 ? 4 : DECODE_QUEUE_SIZE - queue_size;
     }

@@ -24,7 +24,21 @@ int scoreboard_size = 0;
 
 bool ready_to_launch(struct decode_info *decoded, struct rename_info *renamed) {
     // decide if we are free to issue
-    return true;
+    switch (decoded->instr_type) {
+        case TYPE_I:
+            return renamed->rs1_ready;
+        case TYPE_S:
+            return renamed->rs1_ready && renamed->rs2_ready;
+        case TYPE_B:
+            return renamed->rs1_ready && renamed->rs2_ready;
+        case TYPE_U:
+            return true;
+        case TYPE_J:
+            return true;
+        case TYPE_R:
+            return renamed->rs1_ready && renamed->rs2_ready;
+    }
+    return false;
 }
 
 void IS_step() {
@@ -34,13 +48,13 @@ void IS_step() {
         assert(scoreboard_size + rn_to_is_sig[0].issue_size <= ISSUE_QUEUE_SIZE);
         issue_size = rn_to_is_sig[0].issue_size;
         for (int i = 0; i < issue_size; ++i) {
-            scoreboard[scoreboard_size].rs1 = rn_to_is_sig[0].renamed[i].rs1_phy;
-            scoreboard[scoreboard_size].rs2 = rn_to_is_sig[0].renamed[i].rs2_phy;
-            scoreboard[scoreboard_size].rs1_ready = rn_to_is_sig[0].renamed[i].rs1_ready;
-            scoreboard[scoreboard_size].rs2_ready = rn_to_is_sig[0].renamed[i].rs2_ready;
+            scoreboard[scoreboard_size + i].rs1 = rn_to_is_sig[0].renamed[i].rs1_phy;
+            scoreboard[scoreboard_size + i].rs2 = rn_to_is_sig[0].renamed[i].rs2_phy;
+            scoreboard[scoreboard_size + i].rs1_ready = rn_to_is_sig[0].renamed[i].rs1_ready;
+            scoreboard[scoreboard_size + i].rs2_ready = rn_to_is_sig[0].renamed[i].rs2_ready;
 
-            scoreboard[scoreboard_size].decoded = rn_to_is_sig[0].decoded[i];
-            scoreboard[scoreboard_size].renamed = rn_to_is_sig[0].renamed[i];
+            scoreboard[scoreboard_size + i].decoded = rn_to_is_sig[0].decoded[i];
+            scoreboard[scoreboard_size + i].renamed = rn_to_is_sig[0].renamed[i];
         }
         scoreboard_size += issue_size;
     }
@@ -50,9 +64,11 @@ void IS_step() {
             for (int j = 0; j < cmt_wakeup_sig[0].commit_size; ++j) {
                 if (scoreboard[i].rs1 == cmt_wakeup_sig[0].committed[j].recycle_dst) {
                     scoreboard[i].rs1_ready = true;
+                    scoreboard[i].renamed.rs1_ready = true;
                 }
                 if (scoreboard[i].rs2 == cmt_wakeup_sig[0].committed[j].recycle_dst) {
                     scoreboard[i].rs2_ready = true;
+                    scoreboard[i].renamed.rs2_ready = true;
                 }
             }
             
@@ -66,6 +82,9 @@ void IS_step() {
     is_to_ex_sig[1].alu_size = 0;
     for (int i = 0; i < scoreboard_size; ++i) {
         if (ready_to_launch(&scoreboard[i].decoded, &scoreboard[i].renamed)) {
+            #ifdef DEBUG
+            printf("IS: ready to launch pc %x\n", scoreboard[i].decoded.pc);
+            #endif // DEBUG
             scoreboard[i].issued = true;
             is_to_ex_sig[1].valid = true;
             is_to_ex_sig[1].alu_size++;
@@ -92,4 +111,11 @@ void IS_step() {
         }
         ++lookup_ptr;
     }
+    #ifdef DEBUG
+    printf("After squash, scoreboard:\n");
+    for (int i = 0; i < ISSUE_QUEUE_SIZE; ++i) {
+        if (scoreboard[i].issued)
+        printf("pc %x type %d rs1 ready %d rs2 ready %d", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1_ready, scoreboard[i].rs2_ready);
+    }
+    #endif // DEBUG
 }

@@ -7,7 +7,7 @@
 
 struct ram_req {
     bool valid;
-    bool wr;
+bool wr;
     uint32_t size;  // 0: 1 byte 1: 2 bytes 2: 4 bytes 3: 8 bytes 4: 16 bytes
     uint32_t addr;  // should always be false for instr
     uint32_t wdata; // should always be ignored by instr
@@ -153,27 +153,9 @@ struct ex_to_is {
 };
 
 // EX to CMT
-
-struct jmp_commitInfo {
-    // foo
-    struct rename_info renamed;
-    bool rd_valid;
-    uint32_t rd_data;
-};
-
-struct alu_commitInfo {
-    struct rename_info renamed;
-    bool rd_valid;
-    uint32_t rd_data;
-};
-
-struct mdu_commitInfo {
-    struct rename_info renamed;
-    bool rd_valid;
-    uint32_t rd_data;
-};
-
-struct lsu_commitInfo {
+struct commitInfo {
+    bool slot_valid;
+    
     struct rename_info renamed;
     bool rd_valid;
     uint32_t rd_data;
@@ -193,10 +175,10 @@ struct ex_to_cmt {
     bool valid;
 
     int jmp_size, alu_size, mdu_size, lsu_size;
-    struct jmp_commitInfo jmp[JMP_SIZE];
-    struct alu_commitInfo alu[ALU_SIZE];
-    struct mdu_commitInfo mdu[MDU_SIZE];
-    struct lsu_commitInfo lsu[LSU_SIZE];
+    struct commitInfo jmp[JMP_SIZE];
+    struct commitInfo alu[ALU_SIZE];
+    struct commitInfo mdu[MDU_SIZE];
+    struct commitInfo lsu[LSU_SIZE];
 };
 
 struct cmt_to_ex {
@@ -205,16 +187,19 @@ struct cmt_to_ex {
     // may need more info
 };
 
-struct commit_info {
+struct wakeup_info {
     // if an instruction overwrites the dst, we are free to recycle the previous one
     int recycle_dst;
 };
+
+#define COMMIT_SIZE 4
+#define ROB_SIZE 200
 
 struct cmt_wakeup_info {
     bool valid;
 
     int commit_size;
-    struct commit_info committed[4];
+    struct wakeup_info committed[COMMIT_SIZE];
 };
 
 #endif

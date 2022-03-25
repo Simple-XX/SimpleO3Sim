@@ -21,9 +21,22 @@ void IF_step() {
         if_to_id_sig[1].valid = true;
         if_to_id_sig[1].instr_size = id_to_if_sig[0].instr_allow_size > 4 ? 4 :
                                          id_to_if_sig[0].instr_allow_size;
+        #ifdef DEBUG
+        printf("IF stage: fetched %d instructions\n", if_to_id_sig[1].instr_size);
+        printf("IF stage: instructions: ");
+        #endif // DEBUG
+        
         for (int i = 0; i < FETCH_WIDTH; ++i) {
             if_to_id_sig[1].instr[i] = iram_resp.rdata[i];
+            #ifdef DEBUG
+            printf("0x%8x ", if_to_id_sig[1].instr[i]);
+            #endif // DEBUG
         }
+        #ifdef DEBUG
+        printf("\n");
+        #endif // DEBUG
+        if_to_id_sig[1].fetch_pc = fetch_pc;
+        fetch_pc += id_to_if_sig[0].instr_allow_size;
     } else {
         if_to_id_sig[1].valid = false;
     }

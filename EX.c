@@ -112,6 +112,9 @@ void mdUnit() {
 }
 
 void EX_step() {
+    #ifdef DEBUG
+    printf("EX: alu %d instrs mdu %d instrs lsu %d instrs jmp %d instrs\n", is_to_ex_sig[0].alu_size, is_to_ex_sig[0].mdu_size, is_to_ex_sig[0].lsu_size, is_to_ex_sig[0].jmp_size);
+    #endif // DEBUG
     // execuction
     aluUnit();
     lsUnit();

@@ -80,6 +80,9 @@ void RN_step() {
     if (cmt_wakeup_sig[0].valid) {
         for (int i = 0; i < cmt_wakeup_sig[0].commit_size; ++i) {
             commit_dst(cmt_wakeup_sig[0].committed[i].recycle_dst);
+            #ifdef DEBUG
+            printf("RN: waking up prf %d\n", cmt_wakeup_sig[0].committed[i].recycle_dst);
+            #endif // DEBUG
         }
     }
     
@@ -91,8 +94,14 @@ void RN_step() {
             rn_to_is_sig[1].issue_size = 4;
             if (id_to_rn_sig[0].decoded[i].is_branch) {
                 ++current_jmp;
+                #ifdef DEBUG
+                printf("RN: branch instruction at pc %x\n arf to prf map:\n", id_to_rn_sig[0].decoded[i].pc);
+                #endif // DEBUG
                 for (int i = 0; i < 31; ++i) {
                     arf_prf_map[current_jmp][i] = arf_prf_map[current_jmp - 1][i];
+                    #ifdef DEBUG
+                    printf("arf %d prf %d\n", i, arf_prf_map[current_jmp][i]);
+                    #endif // DEBUG
                 }
             }
             

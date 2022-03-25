@@ -54,13 +54,17 @@ int main(int argc, char* argv[]) {
 	init_ram();
 
 	RN_init();
-
+	uint64_t global_cycle = 0;
 	while (1) {
+		#ifdef DEBUG
+		printf("Cycle %llu\n", global_cycle++);
+		#endif // DEBUG
 		IF_step();
 		ID_step();
 		RN_step();
 		IS_step();
-		fakeCMT_step();
+		EX_step();
+		CMT_step();
 		move_sigs();
 	}
 	return 0;
