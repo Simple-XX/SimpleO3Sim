@@ -16,11 +16,11 @@ bool prf_ready[PRF_SIZE];
 int prf_free_list[PRF_SIZE];
 int prf_free_list_size = PRF_SIZE - 32;
 
-int arf_prf_map[JMP_DEPTH][31];
+int arf_prf_map[JMP_DEPTH][32];
 int current_jmp = 0;
 
 void RN_init() {
-    for (int i = 0; i < PRF_SIZE; ++i) {
+    for (int i = 1; i < PRF_SIZE; ++i) {
         prf[i] = 0xdeadbeef;
     }
 

@@ -1,19 +1,22 @@
 #include "EX_impl.h"
 
 extern struct ex_to_cmt ex_to_cmt_sig[2];
-
+#include "interface.h"
 void ALU_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
+    ex_to_cmt_sig[1].alu[offset].pc = decoded.pc;
+    ex_to_cmt_sig[1].alu[offset].slot_valid = true;
     ex_to_cmt_sig[1].alu[offset].rd_valid = true;
+    ex_to_cmt_sig[1].alu[offset].ard = decoded.rd;
     // arithmetic instructions
     switch (decoded.alu_type) {
-        ADD:
+        case ADD:
             if (decoded.instr_type == TYPE_I) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data + decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data + renamed.rs2_data;
             }
             break;
-        SUB:
+        case SUB:
             if (decoded.instr_type == TYPE_I) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data - decoded.imm;
             } else {
@@ -21,7 +24,7 @@ void ALU_calc(struct decode_info decoded, struct rename_info renamed, int offset
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data - renamed.rs2_data;
             }
             break;
-        SLT:
+        case SLT:
             if (decoded.instr_type == TYPE_I) {
                 if ((int32_t)renamed.rs1_data < (int32_t)decoded.imm) {
                     ex_to_cmt_sig[1].alu[offset].rd_data = 1;
@@ -36,7 +39,7 @@ void ALU_calc(struct decode_info decoded, struct rename_info renamed, int offset
                 }
             }
             break;
-        SLTU:
+        case SLTU:
             if (decoded.instr_type == TYPE_I) {
                 if (renamed.rs1_data < decoded.imm) {
                     ex_to_cmt_sig[1].alu[offset].rd_data = 1;
@@ -51,52 +54,52 @@ void ALU_calc(struct decode_info decoded, struct rename_info renamed, int offset
                 }
             }
             break;
-        OR:
+        case OR:
             if (decoded.instr_type == TYPE_I) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data | decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data | renamed.rs2_data;
             }
             break;
-        XOR:
+        case XOR:
             if (decoded.instr_type == TYPE_I) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data ^ decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data ^ renamed.rs2_data;
             }
             break;
-        AND:
+        case AND:
             if (decoded.instr_type == TYPE_I) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data & decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data & renamed.rs2_data;
             }
             break;
-        SLL:
+        case SLL:
             if (decoded.shift_imm) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data << decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data << (renamed.rs2_data & 0x1f);
             }
             break;
-        SRL:
+        case SRL:
             if (decoded.shift_imm) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data >> decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data >> (renamed.rs2_data & 0x1f);
             }
             break;
-        SRA:
+        case SRA:
             if (decoded.shift_imm) {
                 ex_to_cmt_sig[1].alu[offset].rd_data = (int32_t)renamed.rs1_data >> decoded.imm;
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = (int32_t)renamed.rs1_data >> (renamed.rs2_data & 0x1f);
             }
             break;
-        LUI:
+        case LUI:
             ex_to_cmt_sig[1].alu[offset].rd_data = decoded.imm;
             break;
-        AUIPC:
+        case AUIPC:
             ex_to_cmt_sig[1].alu[offset].rd_data = decoded.imm + decoded.pc;
             break;
         default:

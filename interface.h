@@ -46,7 +46,7 @@ struct decode_info {
     bool is_load, is_store;
     int lsu_type;
     bool is_alu;
-    int alu_type;
+    enum ALU_TYPE alu_type;
     int rs1, rs2, rd;
     uint32_t imm;
     uint32_t pc;
@@ -155,6 +155,9 @@ struct ex_to_is {
 // EX to CMT
 struct commitInfo {
     bool slot_valid;
+
+    uint32_t pc; // for debug only
+    int ard; // for debug only
     
     struct rename_info renamed;
     bool rd_valid;

@@ -81,13 +81,17 @@ void lsUnit() {
 
 void aluUnit() {
     // firstly deal with the result that will come out of this stage
+    ex_to_cmt_sig[1].alu_size = 0;
     for (int i = 0; i <= ALU_SIZE; ++i) {
         if (alu_pipeline[ALU_DELAY - 1][i].valid) {
             // we have a valid request
+            ex_to_cmt_sig[1].valid = true;
             ALU_calc(alu_pipeline[ALU_DELAY - 1][i].decoded,
                      alu_pipeline[ALU_DELAY - 1][i].renamed,
                      i
             );
+            ex_to_cmt_sig[1].alu[i].idx = alu_pipeline[ALU_DELAY - 1][i].decoded.instr_idx;
+            ++ex_to_cmt_sig[1].alu_size;
         } else {
             // valid signals must be consecutive
             break;
@@ -119,6 +123,7 @@ void EX_step() {
     printf("EX: alu %d instrs mdu %d instrs lsu %d instrs jmp %d instrs\n", is_to_ex_sig[0].alu_size, is_to_ex_sig[0].mdu_size, is_to_ex_sig[0].lsu_size, is_to_ex_sig[0].jmp_size);
     #endif // DEBUG
     // execuction
+    ex_to_cmt_sig[1].valid = false;
     aluUnit();
     lsUnit();
     jmpUnit();
