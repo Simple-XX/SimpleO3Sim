@@ -103,7 +103,10 @@ void aluUnit() {
     // if there is an arithmetic instruction
     if (is_to_ex_sig[0].valid && is_to_ex_sig[0].alu_size) {
         assert(is_to_ex_sig[0].alu_size <= ALU_SIZE);
-        // firstly deal with the result that will come out of this stage
+        for (int i = 0; i < is_to_ex_sig[0].alu_size; ++i) {
+            alu_pipeline[0][i] = is_to_ex_sig[0].alu[i];
+        }
+        
     }
 }
 

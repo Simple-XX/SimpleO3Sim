@@ -88,10 +88,14 @@ void RN_step() {
     
     // rename
     if (id_to_rn_sig[0].valid) {
+        #ifdef DEBUG
+        printf("RN: rename size: %d\n", id_to_rn_sig[0].decode_size);
+        #endif // DEBUG
         for (int i = 0; i < id_to_rn_sig[0].decode_size; ++i) {
             // if we are facing a branch instruction, save snapshot before proceeding
             rn_to_is_sig[1].valid = true;
             rn_to_is_sig[1].issue_size = 4;
+            rn_to_is_sig[1].decoded[i] = id_to_rn_sig[0].decoded[i];
             if (id_to_rn_sig[0].decoded[i].is_branch) {
                 ++current_jmp;
                 #ifdef DEBUG

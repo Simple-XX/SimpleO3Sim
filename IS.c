@@ -18,6 +18,7 @@ struct ScoreBoard {
     
     // temp tag for squash the story board
     bool issued;
+    bool valid;
 }scoreboard[ISSUE_QUEUE_SIZE];
 
 int scoreboard_size = 0;
@@ -47,6 +48,10 @@ void IS_step() {
     if (rn_to_is_sig[0].valid) {
         assert(scoreboard_size + rn_to_is_sig[0].issue_size <= ISSUE_QUEUE_SIZE);
         issue_size = rn_to_is_sig[0].issue_size;
+        #ifdef DEBUG
+        printf("IS: accept rename size %d\n", issue_size);
+        printf("IS: accepted instructions:\n");
+        #endif // DEBUG
         for (int i = 0; i < issue_size; ++i) {
             scoreboard[scoreboard_size + i].rs1 = rn_to_is_sig[0].renamed[i].rs1_phy;
             scoreboard[scoreboard_size + i].rs2 = rn_to_is_sig[0].renamed[i].rs2_phy;
@@ -55,6 +60,10 @@ void IS_step() {
 
             scoreboard[scoreboard_size + i].decoded = rn_to_is_sig[0].decoded[i];
             scoreboard[scoreboard_size + i].renamed = rn_to_is_sig[0].renamed[i];
+            scoreboard[scoreboard_size + i].valid = true;
+            #ifdef DEBUG
+            printf("instruction pc 0x%x\n", scoreboard[scoreboard_size + i].decoded.pc);
+            #endif // DEBUG
         }
         scoreboard_size += issue_size;
     }
@@ -86,27 +95,32 @@ void IS_step() {
             printf("IS: ready to launch pc %x\n", scoreboard[i].decoded.pc);
             #endif // DEBUG
             scoreboard[i].issued = true;
+            scoreboard[i].valid = false;
             is_to_ex_sig[1].valid = true;
             is_to_ex_sig[1].alu_size++;
             // add to ex channel
-            --scoreboard_size;
+            is_to_ex_sig[1].alu[issued_count].valid = true;
             is_to_ex_sig[1].alu[issued_count].decoded = scoreboard[i].decoded;
             is_to_ex_sig[1].alu[issued_count++].renamed = scoreboard[i].renamed;
+
             if (issued_count == ISSUE_SIZE) break;
         }
     }
+    scoreboard_size -= issued_count;
 
     // squash scoreboard
     int lookup_ptr = 0, append_ptr = 0;
     for (; append_ptr < ISSUE_QUEUE_SIZE; ++append_ptr) {
-        if (!scoreboard[append_ptr].issued) break;
+        if (!scoreboard[append_ptr].valid) break;
     }
+    lookup_ptr = append_ptr + 1;
     while (lookup_ptr < ISSUE_QUEUE_SIZE) {
-        if (!scoreboard[lookup_ptr].issued) {
+        if (scoreboard[lookup_ptr].valid && !scoreboard[lookup_ptr].issued) {
             // if not issued, copy to the first free position
             scoreboard[append_ptr] = scoreboard[lookup_ptr];
+            scoreboard[lookup_ptr].valid = false;
             for (++append_ptr; append_ptr < ISSUE_QUEUE_SIZE; ++append_ptr) {
-                if (!scoreboard[append_ptr].issued) break;
+                if (!scoreboard[append_ptr].valid) break;
             }
         }
         ++lookup_ptr;
@@ -114,8 +128,8 @@ void IS_step() {
     #ifdef DEBUG
     printf("After squash, scoreboard:\n");
     for (int i = 0; i < ISSUE_QUEUE_SIZE; ++i) {
-        if (scoreboard[i].issued)
-        printf("pc %x type %d rs1 ready %d rs2 ready %d", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1_ready, scoreboard[i].rs2_ready);
+        if (!scoreboard[i].issued && scoreboard[i].valid)
+        printf("pc %x type %d rs1 ready %d rs2 ready %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1_ready, scoreboard[i].rs2_ready);
     }
     #endif // DEBUG
 }

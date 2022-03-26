@@ -122,7 +122,7 @@ struct ex_lsuInfo {
 };
 
 #define JMP_SIZE 1
-#define ALU_SIZE 3
+#define ALU_SIZE 4
 #define MDU_SIZE 2
 #define LSU_SIZE 1
 
