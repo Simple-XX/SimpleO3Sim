@@ -11,6 +11,7 @@ uint32_t cmt_arf[32];
 
 char* reg_name[32] = {"x0", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0/fp", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"};
 
+extern uint32_t prf[PRF_SIZE];
 #endif // REG_DEBUG
 
 #include "RN.h"
@@ -84,6 +85,7 @@ void CMT_step() {
                 if (rob[rob_offset].ard != 0) {
                     cmt_arf[rob[rob_offset].ard] = rob[rob_offset].rd_data;
                 }
+                printf("rob phy reg %d write data 0x%x\n", rob[rob_offset].renamed.rd_phy.a, rob[rob_offset].rd_data);
                 
                 #endif // REG_DEBUG
             }
@@ -102,9 +104,20 @@ void CMT_step() {
         }
     }
     #ifdef REG_DEBUG
-    printf("Reg Dump after commit:");
-    for (int i = 0; i < 32; ++i) {
-        printf("%s: 0x%x\n", reg_name[i], cmt_arf[i]);
+    printf("Reg Dump after commit:\n");
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 8; ++j) {
+            printf("%s: 0x%8x ", reg_name[i * 8 + j], cmt_arf[i * 8 + j]);
+        }
+        printf("\n");
+        
+    }
+    printf("Phy Reg Dump after commit:\n");
+    for (int i = 0; i < 12; ++i) {
+        for (int j = 0; j < 8; ++j) {
+            printf("phy %2d:0x%8x ", i * 8 + j, prf[i * 8 + j]);
+        }
+        printf("\n");
     }
     #endif // REG_DEBUG
 }

@@ -92,6 +92,7 @@ void aluUnit() {
             );
             ex_to_cmt_sig[1].alu[i].idx = alu_pipeline[ALU_DELAY - 1][i].decoded.instr_idx;
             ++ex_to_cmt_sig[1].alu_size;
+            ex_to_cmt_sig[1].alu[i].renamed = alu_pipeline[ALU_DELAY - 1][i].renamed;
         } else {
             // valid signals must be consecutive
             break;

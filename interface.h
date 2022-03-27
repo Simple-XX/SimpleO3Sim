@@ -205,4 +205,17 @@ struct cmt_wakeup_info {
     struct wakeup_info committed[COMMIT_SIZE];
 };
 
+struct lsu_to_clint {
+    bool valid;
+    uint32_t addr;
+    bool write;
+    uint32_t data;
+    uint32_t size;
+};
+
+struct clint_to_lsu {
+    bool valid;
+    uint32_t rdata;
+};
+
 #endif
