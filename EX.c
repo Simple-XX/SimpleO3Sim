@@ -117,6 +117,19 @@ void aluUnit() {
 
 void mdUnit() {
     // foo implementation here
+    ex_to_cmt_sig[1].mdu_size = 0;
+    for (int i = 0; i <= MDU_SIZE; i++) {
+        if (mdu_pipeline[MDU_DELAY - 1][i].valid) {
+            // we have a valid request
+            ex_to_cmt_sig[1].valid = true;
+            MDU_calc(mdu_pipeline[ALU_DELAY - 1][i].decoded,
+                     mdu_pipeline[ALU_DELAY - 1][i].renamed,
+                     i
+            );
+            ex_to_cmt_sig[1].mdu[i].idx = mdu_pipeline[MDU_DELAY - 1][i].decoded.instr_idx;
+            ex_to_cmt_sig[1].mdu[i].renamed = mdu_pipeline[MDU_DELAY - 1][i].renamed;
+        }
+    }
 }
 
 void EX_step() {

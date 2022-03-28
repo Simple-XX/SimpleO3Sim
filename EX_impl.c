@@ -113,6 +113,39 @@ void LSU_calc(struct decode_info decoded, struct rename_info renamed, int offset
 
 void MDU_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
     // multiply/division instruction
+    ex_to_cmt_sig[1].mdu[offset].pc = decoded.pc;
+    ex_to_cmt_sig[1].mdu[offset].slot_valid = true;
+    ex_to_cmt_sig[1].mdu[offset].rd_valid = true;
+    ex_to_cmt_sig[1].mdu[offset].ard = decoded.rd;
+
+    switch (decoded.mdu_type) {
+        case MUL:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = renamed.rs1_data * renamed.rs2_data;
+            break;
+        case MULH:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = (uint64_t)((int32_t)renamed.rs1_data * (int32_t)renamed.rs2_data) >> 32;
+            break;
+        case MULHSU:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = (uint64_t)((int32_t)renamed.rs1_data * (uint64_t)renamed.rs2_data) >> 32;
+            break;
+        case MULHU:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = ((uint64_t)renamed.rs1_data * (uint64_t)renamed.rs2_data) >> 32;
+            break;
+        case DIV:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = (int32_t)renamed.rs1_data / (int32_t)renamed.rs2_data;
+            break;
+        case DIVU:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = renamed.rs1_data / renamed.rs2_data;
+            break;
+        case REM:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = (int32_t)renamed.rs1_data % (int32_t)renamed.rs2_data;
+            break;
+        case REMU:
+            ex_to_cmt_sig[1].mdu[offset].rd_data = renamed.rs1_data % renamed.rs2_data;
+            break;
+        default:
+            assert(1);
+    }
 }
 
 extern struct jmp_redirectInfo jmp_redirect[2];

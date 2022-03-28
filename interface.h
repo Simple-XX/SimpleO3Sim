@@ -7,7 +7,7 @@
 
 struct ram_req {
     bool valid;
-bool wr;
+    bool wr;
     uint32_t size;  // 0: 1 byte 1: 2 bytes 2: 4 bytes 3: 8 bytes 4: 16 bytes
     uint32_t addr;  // should always be false for instr
     uint32_t wdata; // should always be ignored by instr
@@ -36,6 +36,7 @@ struct id_to_if {
 
 enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
 enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
+enum MDU_TYPE {MUL, MULH, MULHSU, MULHU, DIV, DIVU, REMU, REM};
 enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
 enum branch_type {BEQ, BNE, BLT, BGE, BLTU, BGEU, JAL, JALR};
 
@@ -46,7 +47,9 @@ struct decode_info {
     bool is_load, is_store;
     int lsu_type;
     bool is_alu;
+    bool is_mdu;
     enum ALU_TYPE alu_type;
+    enum MDU_TYPE mdu_type;
     int rs1, rs2, rd;
     uint32_t imm;
     uint32_t pc;
@@ -216,6 +219,10 @@ struct lsu_to_clint {
 struct clint_to_lsu {
     bool valid;
     uint32_t rdata;
+};
+
+struct clint_interrupt {
+    bool valid;
 };
 
 #endif

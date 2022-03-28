@@ -44,6 +44,7 @@ struct decode_info decode(const uint32_t instr) {
     bool lb, lh, lw, lbu, lhu, sb, sh, sw, addi, slti, sltiu;
     bool xori, ori, andi, slli, srli, srai, add, sub, sll, slt;
     bool sltu, xor, srl, sra, or, and;
+    bool mul, mulh, mulhu, mulhsu, div, divu, rem, remu;
 
     lui = opcode == 0x37;
     auipc = opcode == 0x17;
@@ -82,6 +83,14 @@ struct decode_info decode(const uint32_t instr) {
     sra   = opcode == 0x33 && funct3 == 0x05 && funct7 == 0x20;
     or    = opcode == 0x33 && funct3 == 0x06 && funct7 == 0x00;
     and   = opcode == 0x33 && funct3 == 0x07 && funct7 == 0x00;
+    mul   = opcode == 0x33 && funct3 == 0x00 && funct7 == 01;
+    mulh  = opcode == 0x33 && funct3 == 0x01 && funct7 == 01;
+    mulhsu= opcode == 0x33 && funct3 == 0x02 && funct7 == 01;
+    mulhu = opcode == 0x33 && funct3 == 0x03 && funct7 == 01;
+    div   = opcode == 0x33 && funct3 == 0x04 && funct7 == 01;
+    divu  = opcode == 0x33 && funct3 == 0x05 && funct7 == 01;
+    rem   = opcode == 0x33 && funct3 == 0x06 && funct7 == 01;
+    remu  = opcode == 0x33 && funct3 == 0x07 && funct7 == 01;
 
     ret.is_branch = beq | bne | blt | bge | bltu | bgeu;
     ret.is_lsu = lb | lh | lw | lbu | lhu | sb | sh | sw;
@@ -98,6 +107,7 @@ struct decode_info decode(const uint32_t instr) {
     ret.is_alu = lui | auipc | addi | slti | sltiu | xori | ori | andi | slli |
                  srli | srai | add | sub | sll | slt | sltu | xor | srl | sra |
                  or | and;
+    ret.is_mdu = mul | mulh | mulhu | mulhsu | div | divu | rem | remu;
     ret.alu_type = lui ? LUI :
                    auipc ? AUIPC :
                    (addi | add) ? ADD :
@@ -110,6 +120,14 @@ struct decode_info decode(const uint32_t instr) {
                    (srli | srl) ? SRL :
                    (srai | sra) ? SRA :
                    sub ? SUB : 0xff;
+    ret.mdu_type = mul ? MUL :
+                   mulh ? MULH :
+                   mulhu ? MULHU :
+                   mulhsu ? MULHSU :
+                   div ? DIV :
+                   divu ? DIVU :
+                   rem ? REM :
+                   remu ? REMU : 0xff;
     bool shift_imm = slli | srli | srai;
     bool type_i = jalr | lb | lh | lw | lbu | lhu |
       addi | slti | sltiu | xori | ori | andi;

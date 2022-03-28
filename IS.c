@@ -89,6 +89,7 @@ void IS_step() {
     //is_to_ex_sig[1].alu_size;
     int issued_count = 0;
     is_to_ex_sig[1].alu_size = 0;
+    is_to_ex_sig[1].mdu_size = 0;
     for (int i = 0; i < scoreboard_size; ++i) {
         if (ready_to_launch(&scoreboard[i].decoded, &scoreboard[i].renamed)) {
             #ifdef DEBUG
@@ -97,12 +98,21 @@ void IS_step() {
             scoreboard[i].issued = true;
             scoreboard[i].valid = false;
             is_to_ex_sig[1].valid = true;
-            is_to_ex_sig[1].alu_size++;
-            // add to ex channel
-            is_to_ex_sig[1].alu[issued_count].valid = true;
-            is_to_ex_sig[1].alu[issued_count].decoded = scoreboard[i].decoded;
-            is_to_ex_sig[1].alu[issued_count++].renamed = scoreboard[i].renamed;
-
+            if (scoreboard[i].decoded.is_alu) {
+                is_to_ex_sig[1].alu_size++;
+                // add to ex channel
+                is_to_ex_sig[1].alu[issued_count].valid = true;
+                is_to_ex_sig[1].alu[issued_count].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].alu[issued_count].renamed = scoreboard[i].renamed;
+            } else if (scoreboard[i].decoded.is_mdu) {
+                is_to_ex_sig[1].mdu_size++;
+                // add to ex channel
+                is_to_ex_sig[1].mdu[issued_count].valid = true;
+                is_to_ex_sig[1].mdu[issued_count].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].mdu[issued_count].renamed = scoreboard[i].renamed;
+            }
+            
+            ++issued_count;
             if (issued_count == ISSUE_SIZE) break;
         }
     }
