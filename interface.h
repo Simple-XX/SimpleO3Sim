@@ -225,4 +225,17 @@ struct clint_interrupt {
     bool valid;
 };
 
+enum CSR_OP {CSRW, CSRS, CSRC};
+
+struct csr_req {
+    // foo
+    enum CSR_OP op;
+    uint32_t csrAddr;
+    uint32_t rs_data;
+};
+struct csr_resp {
+    // foo
+    uint32_t rd_data;
+};
+
 #endif
