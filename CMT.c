@@ -5,6 +5,8 @@ struct cmt_to_ex cmt_to_ex_sig[2];
 
 struct cmt_wakeup_info cmt_wakeup_sig[2];
 
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
 #ifdef REG_DEBUG
 #include "RN.h"
 uint32_t cmt_arf[32];
@@ -67,6 +69,13 @@ void CMT_step() {
             rob[rob_offset + ex_to_cmt_sig[0].lsu[i].idx - commit_head] = ex_to_cmt_sig[0].lsu[i];
         }
     }
+
+    for (int i = 0; i < ROB_SIZE; ++i) {
+        if (jmp_to_is_sig[0].redirect_valid && rob[i].slot_valid && jmp_to_is_sig[0].instr_idx < rob[i].idx) {
+            rob[i].slot_valid = false;
+        }
+    }
+
     int commit_counter = 0;
     while (1) {
         // commit until not valid

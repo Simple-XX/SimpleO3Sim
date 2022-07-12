@@ -1,4 +1,4 @@
-#ifndef INTERFACE_H
+#ifndef INTERFACE_H 
 #define INTERFACE_H
 
 #include <stdbool.h>
@@ -78,6 +78,7 @@ struct int_pair {
 
 // RN to IS
 struct rename_info {
+    int current_jmp;
     int rs1_phy, rs2_phy;
     bool rs1_ready, rs2_ready;
     struct int_pair rd_phy;
@@ -173,8 +174,10 @@ struct commitInfo {
 
 struct jmp_redirectInfo {
     // redirect with instruction count number
+    bool redirect_valid;
     uint32_t redirect_pc;
     uint64_t instr_idx;
+    int current_jmp;
 };
 
 struct ex_to_cmt {

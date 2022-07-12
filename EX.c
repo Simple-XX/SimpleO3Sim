@@ -9,7 +9,7 @@ struct ex_to_cmt ex_to_cmt_sig[2];
 extern struct cmt_to_ex cmt_to_ex_sig[2];
 
 
-struct jmp_redirectInfo jmp_redirect[2];
+struct jmp_redirectInfo jmp_to_is_sig[2];
 
 struct ex_jmpInfo jmp_pipeline[JMP_DELAY][JMP_SIZE + 1];
 struct ex_aluInfo alu_pipeline[ALU_DELAY][ALU_SIZE + 1];
@@ -17,6 +17,17 @@ struct ex_mduInfo mdu_pipeline[MDU_DELAY][MDU_SIZE + 1];
 struct ex_lsuInfo lsu_pipeline[LSU_DELAY][LSU_SIZE + 1];
 
 void jmpUnit() {
+    if (jmp_to_is_sig[0].redirect_valid) {
+        // if flush, remove all instructions after flush point
+        for (int i = 0; i <= JMP_SIZE; ++i) {
+            for (int j = 0; j < JMP_DELAY; ++j) {
+                if (jmp_pipeline[j][i].decoded.instr_idx > jmp_to_is_sig[0].instr_idx) {
+                    jmp_pipeline[j][i].valid = false;
+                }
+            }
+        }
+    }
+
     // firstly deal with the result that will come out of this stage
     for (int i = 0; i <= JMP_SIZE; ++i) {
         if (jmp_pipeline[JMP_DELAY - 1][i].valid) {
@@ -25,11 +36,13 @@ void jmpUnit() {
                      jmp_pipeline[JMP_DELAY - 1][i].renamed,
                      i);
         } else {
+            // may have flush, no ops
             // valid signals must be consecutive
-            ex_to_cmt_sig[1].jmp_size = i;
-            break;
+            // ex_to_cmt_sig[1].jmp_size = i;
+            // break;
         }
     }
+    
     // every other stages move forward
     for (int i = 0; i < JMP_DELAY - 1; ++i) {
         for (int j = 0; j < JMP_SIZE; ++j) {
@@ -42,7 +55,7 @@ void jmpUnit() {
         assert(is_to_ex_sig[0].jmp_size <= JMP_SIZE);
         // accept incoming instructions
         for (int i = 0; i < is_to_ex_sig[0].jmp_size; ++i) {
-            assert(is_to_ex_sig[0].jmp[i].decoded.is_branch);
+            assert(is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_B || is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_J);
             jmp_pipeline[0][i] = is_to_ex_sig[0].jmp[i];
         }
     }
@@ -80,6 +93,15 @@ void lsUnit() {
 }
 
 void aluUnit() {
+    // if flush, remove all instructions after flush point
+    for (int i = 0; i <= ALU_SIZE; ++i) {
+        for (int j = 0; j < ALU_DELAY; ++j) {
+            if (alu_pipeline[j][i].decoded.instr_idx > jmp_to_is_sig[0].instr_idx) {
+                alu_pipeline[j][i].valid = false;
+            }
+        }
+    }
+
     // firstly deal with the result that will come out of this stage
     ex_to_cmt_sig[1].alu_size = 0;
     for (int i = 0; i <= ALU_SIZE; ++i) {
@@ -94,8 +116,9 @@ void aluUnit() {
             ++ex_to_cmt_sig[1].alu_size;
             ex_to_cmt_sig[1].alu[i].renamed = alu_pipeline[ALU_DELAY - 1][i].renamed;
         } else {
+            // may have flush, no ops
             // valid signals must be consecutive
-            break;
+            // break;
         }
     }
 
@@ -116,6 +139,15 @@ void aluUnit() {
 }
 
 void mdUnit() {
+    // if flush, remove all instructions after flush point
+    for (int i = 0; i <= ALU_SIZE; ++i) {
+        for (int j = 0; j < ALU_DELAY; ++j) {
+            if (mdu_pipeline[j][i].decoded.instr_idx > jmp_to_is_sig[0].instr_idx) {
+                mdu_pipeline[j][i].valid = false;
+            }
+        }
+    }
+
     // foo implementation here
     ex_to_cmt_sig[1].mdu_size = 0;
     for (int i = 0; i <= MDU_SIZE; i++) {

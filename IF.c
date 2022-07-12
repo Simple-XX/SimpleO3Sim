@@ -5,9 +5,15 @@
 struct if_to_id if_to_id_sig[2];
 extern struct id_to_if id_to_if_sig[2];
 
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
 uint32_t fetch_pc = RESET_VEC;
 
 void IF_step() {
+    if (jmp_to_is_sig[0].redirect_valid) {
+        fetch_pc = jmp_to_is_sig[0].redirect_pc;
+    }
+
     // provide instruction fetch signal
     iram_req.addr = fetch_pc - 0x80000000;
     iram_req.wr = false;
@@ -36,7 +42,7 @@ void IF_step() {
         printf("\n");
         #endif // DEBUG
         if_to_id_sig[1].fetch_pc = fetch_pc;
-        fetch_pc += id_to_if_sig[0].instr_allow_size;
+        fetch_pc += id_to_if_sig[0].instr_allow_size * 4;
     } else {
         if_to_id_sig[1].valid = false;
     }

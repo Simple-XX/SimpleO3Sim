@@ -23,6 +23,7 @@ extern struct ex_to_is ex_to_is_sig[2];
 extern struct cmt_wakeup_info cmt_wakeup_sig[2];
 extern struct is_to_ex is_to_ex_sig[2];
 extern struct ex_to_is ex_to_is_sig[2];
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 char ram_file[PATH_LEN] = "./test.bin";
 
@@ -49,6 +50,7 @@ void move_sigs() {
 	ex_to_is_sig[0] = ex_to_is_sig[1];
 	ex_to_cmt_sig[0] = ex_to_cmt_sig[1];
 	cmt_to_ex_sig[0] = cmt_to_ex_sig[1];
+	jmp_to_is_sig[0] = jmp_to_is_sig[1];
 }
 
 int main(int argc, char* argv[]) {

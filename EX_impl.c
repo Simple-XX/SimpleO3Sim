@@ -111,6 +111,11 @@ void LSU_calc(struct decode_info decoded, struct rename_info renamed, int offset
     // load/store instruction
 }
 
+void CSR_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
+    // CSR instruction
+
+}
+
 void MDU_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
     // multiply/division instruction
     ex_to_cmt_sig[1].mdu[offset].pc = decoded.pc;
@@ -148,62 +153,66 @@ void MDU_calc(struct decode_info decoded, struct rename_info renamed, int offset
     }
 }
 
-extern struct jmp_redirectInfo jmp_redirect[2];
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 void JMP_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
     bool taken = false;
     // jmp/branch instruction
     // by default we proceed without considering branch, so if branch, redirect
     switch (decoded.branch_type) {
-        BEQ:
+        case BEQ:
             if (renamed.rs1_data == renamed.rs2_data) {
                 taken = true;
             }
             break;
-        BNE:
+        case BNE:
             if (renamed.rs1_data != renamed.rs2_data) {
                 taken = true;
             }
             break;
-        BLT:
+        case BLT:
             if ((int32_t)renamed.rs1_data < (int32_t)renamed.rs2_data) {
                 taken = true;
             }
             break;
-        BGE:
+        case BGE:
             if ((int32_t)renamed.rs1_data > (int32_t)renamed.rs2_data) {
                 taken = true;
             }
             break;
-        BLTU:
+        case BLTU:
             if (renamed.rs1_data < renamed.rs2_data) {
                 taken = true;
             }
             break;
-        BGEU:
+        case BGEU:
             if (renamed.rs1_data > renamed.rs2_data) {
                 taken = true;
             }
             break;
-        JAL:
+        case JAL:
             taken = true;
             // with valid rd
             ex_to_cmt_sig[1].jmp[offset].rd_valid = true;
             ex_to_cmt_sig[1].jmp[offset].rd_data = decoded.pc + 4;
             break;
-        JALR:
-            // taken = true;
+        case JALR:
+            taken = true;
             // directly update redirect info
-            jmp_redirect[1].instr_idx = decoded.instr_idx + 1;
-            jmp_redirect[1].redirect_pc = renamed.rs1_data + decoded.imm;
+            jmp_to_is_sig[1].instr_idx = decoded.instr_idx + 1;
+            jmp_to_is_sig[1].redirect_pc = renamed.rs1_data + decoded.imm;
             // with valid rd
             ex_to_cmt_sig[1].jmp[offset].rd_valid = true;
             ex_to_cmt_sig[1].jmp[offset].rd_data = decoded.pc + 4;
             break;
     }
     if (taken) {
-        jmp_redirect[1].instr_idx = decoded.instr_idx + 1;
-        jmp_redirect[1].redirect_pc = decoded.pc + decoded.imm;
+        jmp_to_is_sig[1].redirect_valid = true;
+        jmp_to_is_sig[1].instr_idx = decoded.instr_idx + 1;
+        jmp_to_is_sig[1].redirect_pc = decoded.pc + decoded.imm;
+        jmp_to_is_sig[1].current_jmp = renamed.current_jmp;
+    } else {
+        jmp_to_is_sig[1].redirect_valid = false;
     }
     
 }

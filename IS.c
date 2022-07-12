@@ -7,6 +7,8 @@ struct is_to_rn is_to_rn_sig[2];
 struct is_to_ex is_to_ex_sig[2];
 extern struct ex_to_is ex_to_is_sig[2];
 
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
 struct ScoreBoard {
     // all renamed
     int rs1, rs2;
@@ -19,7 +21,7 @@ struct ScoreBoard {
     // temp tag for squash the story board
     bool issued;
     bool valid;
-}scoreboard[ISSUE_QUEUE_SIZE];
+} scoreboard[ISSUE_QUEUE_SIZE];
 
 int scoreboard_size = 0;
 
@@ -83,33 +85,51 @@ void IS_step() {
             
         }
     }
-    
+    // flush redirected ones
+    for (int i = 0; i < ISSUE_QUEUE_SIZE; ++i) {
+        if (scoreboard[i].decoded.instr_idx > jmp_to_is_sig[0].instr_idx && jmp_to_is_sig[0].redirect_valid) {
+            scoreboard[i].valid = false;
+        }
+    }    
 
     // decide what to issue
     //is_to_ex_sig[1].alu_size;
-    int issued_count = 0;
+    int issued_count = 0, missed_count = 0, alu_count = 0, mdu_count = 0, jmp_count = 0;
     is_to_ex_sig[1].alu_size = 0;
     is_to_ex_sig[1].mdu_size = 0;
+    is_to_ex_sig[1].jmp_size = 0;
     for (int i = 0; i < scoreboard_size; ++i) {
         if (ready_to_launch(&scoreboard[i].decoded, &scoreboard[i].renamed)) {
             #ifdef DEBUG
             printf("IS: ready to launch pc %x\n", scoreboard[i].decoded.pc);
             #endif // DEBUG
+            if (!scoreboard[i].valid) {
+                ++missed_count;
+                continue;
+            }
             scoreboard[i].issued = true;
             scoreboard[i].valid = false;
             is_to_ex_sig[1].valid = true;
             if (scoreboard[i].decoded.is_alu) {
                 is_to_ex_sig[1].alu_size++;
+                alu_count = is_to_ex_sig[1].alu_size;
                 // add to ex channel
-                is_to_ex_sig[1].alu[issued_count].valid = true;
-                is_to_ex_sig[1].alu[issued_count].decoded = scoreboard[i].decoded;
-                is_to_ex_sig[1].alu[issued_count].renamed = scoreboard[i].renamed;
+                is_to_ex_sig[1].alu[alu_count - 1].valid = true;
+                is_to_ex_sig[1].alu[alu_count - 1].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].alu[alu_count - 1].renamed = scoreboard[i].renamed;
             } else if (scoreboard[i].decoded.is_mdu) {
                 is_to_ex_sig[1].mdu_size++;
+                mdu_count = is_to_ex_sig[1].mdu_size;
                 // add to ex channel
-                is_to_ex_sig[1].mdu[issued_count].valid = true;
-                is_to_ex_sig[1].mdu[issued_count].decoded = scoreboard[i].decoded;
-                is_to_ex_sig[1].mdu[issued_count].renamed = scoreboard[i].renamed;
+                is_to_ex_sig[1].mdu[issued_count - 1].valid = true;
+                is_to_ex_sig[1].mdu[issued_count - 1].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].mdu[issued_count - 1].renamed = scoreboard[i].renamed;
+            } else if (scoreboard[i].decoded.instr_type == TYPE_B || scoreboard[i].decoded.instr_type == TYPE_J) {
+                is_to_ex_sig[1].jmp_size++;
+                jmp_count = is_to_ex_sig[1].jmp_size;
+                is_to_ex_sig[1].jmp[jmp_count - 1].valid = true;
+                is_to_ex_sig[1].jmp[jmp_count - 1].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].jmp[jmp_count - 1].renamed = scoreboard[i].renamed;
             }
             
             ++issued_count;
@@ -117,6 +137,7 @@ void IS_step() {
         }
     }
     scoreboard_size -= issued_count;
+    scoreboard_size -= missed_count;
 
     // squash scoreboard
     int lookup_ptr = 0, append_ptr = 0;

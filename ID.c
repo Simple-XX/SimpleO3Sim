@@ -8,6 +8,8 @@ struct id_to_if id_to_if_sig[2];
 struct id_to_rn id_to_rn_sig[2];
 extern struct rn_to_id rn_to_id_sig[2];
 
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
 static uint32_t decode_queue[DECODE_QUEUE_SIZE];
 static uint32_t decode_pc[DECODE_QUEUE_SIZE];
 static int decode_queue_start = 0, decode_queue_end = 0, queue_size = 0;
@@ -138,7 +140,10 @@ struct decode_info decode(const uint32_t instr) {
                       blt ? BLT :
                       bge ? BGE :
                       bltu ? BLTU :
-                      bgeu ? BGEU : 0xff;
+                      bgeu ? BGEU :
+                      jal ? JAL :
+                      jalr ? JALR : 0xff;
+    ret.branch_type = branch_type;
     bool type_u = lui | auipc;
     bool type_j = jal;
     bool type_r = slli | srli | srai |
@@ -169,43 +174,52 @@ struct decode_info decode(const uint32_t instr) {
 // FIXME: decode must decide if there are enough rename space
 // i.e. if we have more branch than expected, only send some of them to rename
 void ID_step() {
-    // Instruction decode
-    if (!(decode_queue_end == decode_queue_start) && rn_to_id_sig[0].allow_in) {
-        // instructions in queue and we are allowed to enter rename
-        int dequeue_size = rn_to_id_sig[0].rename_size;
-        #ifdef DEBUG
-        printf("ID: dequeue size %d\n", dequeue_size);
-        #endif // DEBUG 
-        for (int i = 0; i < dequeue_size; ++i) {
-            uint32_t instr = decode_queue[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
-            id_to_rn_sig[1].decoded[i] = decode(instr);
-            id_to_rn_sig[1].decoded[i].pc = decode_pc[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
-            id_to_rn_sig[1].decoded[i].instr_idx = global_instr_idx++;
+    if (jmp_to_is_sig[0].redirect_valid) {
+        // flush the entire queue
+        decode_queue_start = 0;
+        decode_queue_end = 0;
+        queue_size = 0;
+        global_instr_idx = jmp_to_is_sig[0].instr_idx + 1;
+    } else {
+        // Instruction decode
+        if (!(decode_queue_end == decode_queue_start) && rn_to_id_sig[0].allow_in) {
+            // instructions in queue and we are allowed to enter rename
+            int dequeue_size = rn_to_id_sig[0].rename_size;
             #ifdef DEBUG
-            printf("instr: idx %llu, pc 0x%x\n", id_to_rn_sig[1].decoded[i].instr_idx, id_to_rn_sig[1].decoded[i].pc);
-            #endif // DEBUG
-        }
-        id_to_rn_sig[1].valid = true;
-        id_to_rn_sig[1].decode_size = dequeue_size;
+            printf("ID: dequeue size %d\n", dequeue_size);
+            #endif // DEBUG 
+            for (int i = 0; i < dequeue_size; ++i) {
+                uint32_t instr = decode_queue[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
+                id_to_rn_sig[1].decoded[i] = decode(instr);
+                id_to_rn_sig[1].decoded[i].pc = decode_pc[(decode_queue_start + i) % DECODE_QUEUE_SIZE];
+                id_to_rn_sig[1].decoded[i].instr_idx = global_instr_idx++;
+                #ifdef DEBUG
+                printf("instr: idx %llu, pc 0x%x\n", id_to_rn_sig[1].decoded[i].instr_idx, id_to_rn_sig[1].decoded[i].pc);
+                #endif // DEBUG
+            }
+            id_to_rn_sig[1].valid = true;
+            id_to_rn_sig[1].decode_size = dequeue_size;
 
-        decode_queue_start = (decode_queue_start + dequeue_size) % DECODE_QUEUE_SIZE;
-        queue_size -= dequeue_size;
-    }
-    // actually not perfect emu, since RTL queue cannot push after pop
-    if (!(decode_queue_end == decode_queue_start - 1) && if_to_id_sig[0].valid) {
-        // push some more instrs
-        // instruction size should always fit in our queue size
-        // assert((decode_queue_start + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE < decode_queue_end);
-        #ifdef DEBUG
-        printf("ID enqueue size %d\n", if_to_id_sig[0].instr_size);
-        #endif // DEBUG
-        for (int i = 0; i < if_to_id_sig[0].instr_size; ++i) {
-            decode_queue[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].instr[i];
-            decode_pc[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].fetch_pc + i * 4;
+            decode_queue_start = (decode_queue_start + dequeue_size) % DECODE_QUEUE_SIZE;
+            queue_size -= dequeue_size;
         }
-        decode_queue_end = (decode_queue_end + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE;
-        queue_size += if_to_id_sig[0].instr_size;
+        // actually not perfect emu, since RTL queue cannot push after pop
+        if (!(decode_queue_end == decode_queue_start - 1) && if_to_id_sig[0].valid) {
+            // push some more instrs
+            // instruction size should always fit in our queue size
+            // assert((decode_queue_start + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE < decode_queue_end);
+            #ifdef DEBUG
+            printf("ID enqueue size %d\n", if_to_id_sig[0].instr_size);
+            #endif // DEBUG
+            for (int i = 0; i < if_to_id_sig[0].instr_size; ++i) {
+                decode_queue[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].instr[i];
+                decode_pc[(decode_queue_end + i) % DECODE_QUEUE_SIZE] = if_to_id_sig[0].fetch_pc + i * 4;
+            }
+            decode_queue_end = (decode_queue_end + if_to_id_sig[0].instr_size) % DECODE_QUEUE_SIZE;
+            queue_size += if_to_id_sig[0].instr_size;
+        }
     }
+    
     if (!(decode_queue_end == decode_queue_start - 1)) {
         #ifdef DEBUG
         printf("ID allowin size %d\n", id_to_if_sig[1].instr_allow_size);

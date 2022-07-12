@@ -8,6 +8,8 @@ struct rn_to_id rn_to_id_sig[2];
 struct rn_to_is rn_to_is_sig[2];
 extern struct is_to_rn is_to_rn_sig[2];
 
+extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
 // always assign r0 with prf[0]
 uint32_t prf[PRF_SIZE];
 bool prf_ready[PRF_SIZE];
@@ -87,7 +89,7 @@ void RN_step() {
     }
     
     // rename
-    if (id_to_rn_sig[0].valid) {
+    if (id_to_rn_sig[0].valid && !(jmp_to_is_sig[0].redirect_valid)) {
         #ifdef DEBUG
         printf("RN: rename size: %d\n", id_to_rn_sig[0].decode_size);
         #endif // DEBUG
@@ -108,6 +110,7 @@ void RN_step() {
                     #endif // DEBUG
                 }
             }
+            rn_to_is_sig[1].renamed[i].current_jmp = current_jmp;
             
             if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_I) {
                 rn_to_is_sig[1].renamed[i].rs2_phy = 0;
@@ -149,6 +152,9 @@ void RN_step() {
             rn_to_is_sig[1].renamed[i].rs1_data = prf[rn_to_is_sig[1].renamed[i].rs1_phy];
             rn_to_is_sig[1].renamed[i].rs2_data = prf[rn_to_is_sig[1].renamed[i].rs2_phy];
         }
+    }
+    if (jmp_to_is_sig[0].redirect_valid) {
+        current_jmp = jmp_to_is_sig[0].current_jmp;
     }
     rn_to_id_sig[1].allow_in = true;
     rn_to_id_sig[1].rename_size = 4;
