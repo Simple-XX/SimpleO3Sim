@@ -20,7 +20,7 @@ static uint32_t imm_expansion(uint32_t imm, int from_bit) {
     // dup since from_bit
     uint32_t extractor = 1 << from_bit & imm;
     uint32_t ret = 0;
-    for (int i = 0; i < 31 - from_bit; ++i) {
+    for (int i = 0; i < 32 - from_bit; ++i) {
         ret = (ret << 1) | extractor;
     }
     ret |= imm;
