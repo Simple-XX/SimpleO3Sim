@@ -36,6 +36,9 @@ void parse_arg(int argc, char* argv[]) {
 }
 
 void move_sigs() {
+	if (jmp_to_is_sig[0].redirect_valid) {
+		jmp_to_is_sig[1].redirect_valid = false;
+	}
 	// move sigs from 1 to 0
 	if_to_id_sig[0] = if_to_id_sig[1];
 	id_to_if_sig[0] = id_to_if_sig[1];

@@ -180,6 +180,7 @@ void ID_step() {
         decode_queue_end = 0;
         queue_size = 0;
         global_instr_idx = jmp_to_is_sig[0].instr_idx + 1;
+        id_to_rn_sig[1].valid = false;
     } else {
         // Instruction decode
         if (!(decode_queue_end == decode_queue_start) && rn_to_id_sig[0].allow_in) {
@@ -219,6 +220,8 @@ void ID_step() {
             queue_size += if_to_id_sig[0].instr_size;
         }
     }
+    
+
     
     if (!(decode_queue_end == decode_queue_start - 1)) {
         #ifdef DEBUG

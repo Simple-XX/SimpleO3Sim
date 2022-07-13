@@ -98,7 +98,7 @@ void RN_step() {
             rn_to_is_sig[1].valid = true;
             rn_to_is_sig[1].issue_size = 4;
             rn_to_is_sig[1].decoded[i] = id_to_rn_sig[0].decoded[i];
-            if (id_to_rn_sig[0].decoded[i].is_branch) {
+            if (id_to_rn_sig[0].decoded[i].is_branch || id_to_rn_sig[0].decoded->instr_type == TYPE_J) {
                 ++current_jmp;
                 #ifdef DEBUG
                 printf("RN: branch instruction at pc %x\n arf to prf map:\n", id_to_rn_sig[0].decoded[i].pc);
