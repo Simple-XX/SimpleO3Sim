@@ -89,7 +89,7 @@ void RN_step() {
     }
     
     // rename
-    if (id_to_rn_sig[0].valid && !(jmp_to_is_sig[0].redirect_valid)) {
+    if (id_to_rn_sig[0].valid && !(jmp_to_is_sig[0].redirect_valid) && is_to_rn_sig[0].allow_in) {
         #ifdef DEBUG
         printf("RN: rename size: %d\n", id_to_rn_sig[0].decode_size);
         #endif // DEBUG
@@ -151,11 +151,27 @@ void RN_step() {
 
             rn_to_is_sig[1].renamed[i].rs1_data = prf[rn_to_is_sig[1].renamed[i].rs1_phy];
             rn_to_is_sig[1].renamed[i].rs2_data = prf[rn_to_is_sig[1].renamed[i].rs2_phy];
+            if (!prf_free_list_size) {
+                // run out of dst reg, stop here
+                #ifdef REG_DEBUG
+                printf("Run out of free phy reg after handling 0x%08x\n", id_to_rn_sig[0].decoded[i].pc);
+                #endif
+                // break;
+            }
         }
+    } else {
+        rn_to_is_sig[1].valid = false;
     }
     if (jmp_to_is_sig[0].redirect_valid) {
         current_jmp = jmp_to_is_sig[0].current_jmp;
     }
-    rn_to_id_sig[1].allow_in = true;
-    rn_to_id_sig[1].rename_size = 4;
+    if (prf_free_list_size)
+        rn_to_id_sig[1].allow_in = true;
+    else
+        rn_to_id_sig[1].allow_in = false;
+    rn_to_id_sig[1].rename_size = prf_free_list_size > RENAME_MAX ? RENAME_MAX : prf_free_list_size;
+    #ifdef REG_DEBUG
+    if (prf_free_list_size && rn_to_id_sig[1].allow_in)
+        printf("rename size %d\n", rn_to_id_sig[1].rename_size);
+    #endif
 }

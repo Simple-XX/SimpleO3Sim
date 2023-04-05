@@ -7,3 +7,4 @@ test.elf
 test.s
 test.bin
 test.o
+*.log

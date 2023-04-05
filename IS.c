@@ -136,6 +136,9 @@ void IS_step() {
             if (issued_count == ISSUE_SIZE) break;
         }
     }
+    #ifdef REG_DEBUG
+    printf("real issue count %d\n", issued_count);
+    #endif
     scoreboard_size -= issued_count;
     scoreboard_size -= missed_count;
 
@@ -163,4 +166,9 @@ void IS_step() {
         printf("pc %x type %d rs1 ready %d rs2 ready %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1_ready, scoreboard[i].rs2_ready);
     }
     #endif // DEBUG
+    if (scoreboard_size + RENAME_MAX > ISSUE_QUEUE_SIZE) {
+        is_to_rn_sig[1].allow_in = false;
+    } else {
+        is_to_rn_sig[1].allow_in = true;
+    }
 }

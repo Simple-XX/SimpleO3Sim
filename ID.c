@@ -181,6 +181,7 @@ void ID_step() {
         queue_size = 0;
         global_instr_idx = jmp_to_is_sig[0].instr_idx + 1;
         id_to_rn_sig[1].valid = false;
+        id_to_if_sig[1].allow_in = false;
     } else {
         // Instruction decode
         if (!(decode_queue_end == decode_queue_start) && rn_to_id_sig[0].allow_in) {
@@ -203,6 +204,8 @@ void ID_step() {
 
             decode_queue_start = (decode_queue_start + dequeue_size) % DECODE_QUEUE_SIZE;
             queue_size -= dequeue_size;
+        } else {
+            id_to_rn_sig[1].valid = false;
         }
         // actually not perfect emu, since RTL queue cannot push after pop
         if (!(decode_queue_end == decode_queue_start - 1) && if_to_id_sig[0].valid) {

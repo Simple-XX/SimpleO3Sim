@@ -15,6 +15,7 @@ void ALU_calc(struct decode_info decoded, struct rename_info renamed, int offset
             } else {
                 ex_to_cmt_sig[1].alu[offset].rd_data = renamed.rs1_data + renamed.rs2_data;
             }
+            printf("add PC %x rd %d data = %x rs1 %d rs2 %d imm %d\n", decoded.pc, decoded.rd, ex_to_cmt_sig[1].alu[offset].rd_data, renamed.rs1_phy, renamed.rs2_phy, decoded.imm);
             break;
         case SUB:
             if (decoded.instr_type == TYPE_I) {
@@ -156,6 +157,9 @@ void MDU_calc(struct decode_info decoded, struct rename_info renamed, int offset
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 void JMP_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
+    ex_to_cmt_sig[1].jmp[offset].pc = decoded.pc;
+    ex_to_cmt_sig[1].jmp[offset].slot_valid = true;
+    ex_to_cmt_sig[1].jmp[offset].ard = decoded.rd;
     bool taken = false;
     // jmp/branch instruction
     // by default we proceed without considering branch, so if branch, redirect
@@ -199,7 +203,7 @@ void JMP_calc(struct decode_info decoded, struct rename_info renamed, int offset
         case JALR:
             taken = true;
             // directly update redirect info
-            jmp_to_is_sig[1].instr_idx = decoded.instr_idx + 1;
+            jmp_to_is_sig[1].instr_idx = decoded.instr_idx;
             jmp_to_is_sig[1].redirect_pc = renamed.rs1_data + decoded.imm;
             // with valid rd
             ex_to_cmt_sig[1].jmp[offset].rd_valid = true;
@@ -208,7 +212,7 @@ void JMP_calc(struct decode_info decoded, struct rename_info renamed, int offset
     }
     if (taken) {
         jmp_to_is_sig[1].redirect_valid = true;
-        jmp_to_is_sig[1].instr_idx = decoded.instr_idx + 1;
+        jmp_to_is_sig[1].instr_idx = decoded.instr_idx;
         jmp_to_is_sig[1].redirect_pc = decoded.pc + decoded.imm;
         jmp_to_is_sig[1].current_jmp = renamed.current_jmp;
     } else {

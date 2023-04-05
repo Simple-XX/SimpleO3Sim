@@ -48,28 +48,37 @@ void CMT_step() {
         printf("jmp unit wants to commit %d instrs\n", ex_to_cmt_sig[0].jmp_size);
         #endif // DEBUG
         for (int i = 0; i < ex_to_cmt_sig[0].jmp_size; ++i) {
-            rob[rob_offset + ex_to_cmt_sig[0].jmp[i].idx - commit_head] = ex_to_cmt_sig[0].jmp[i];
+            rob[ex_to_cmt_sig[0].jmp[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].jmp[i];
         }
+        //rob_offset += ex_to_cmt_sig[0].jmp_size;
         #ifdef DEBUG
         printf("alu unit wants to commit %d instrs\n", ex_to_cmt_sig[0].alu_size);
         #endif // DEBUG
         for (int i = 0; i < ex_to_cmt_sig[0].alu_size; ++i) {
-            rob[rob_offset + ex_to_cmt_sig[0].alu[i].idx - commit_head] = ex_to_cmt_sig[0].alu[i];
+            rob[ex_to_cmt_sig[0].alu[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].alu[i];
         }
+        //rob_offset += ex_to_cmt_sig[0].alu_size;
         #ifdef DEBUG
         printf("mdu unit wants to commit %d instrs\n", ex_to_cmt_sig[0].mdu_size);
         #endif // DEBUG
         for (int i = 0; i < ex_to_cmt_sig[0].mdu_size; ++i) {
-            rob[rob_offset + ex_to_cmt_sig[0].mdu[i].idx - commit_head] = ex_to_cmt_sig[0].mdu[i];
+            rob[ex_to_cmt_sig[0].mdu[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].mdu[i];
         }
+        //rob_offset += ex_to_cmt_sig[0].mdu_size;
         #ifdef DEBUG
         printf("lsu unit wants to commit %d instrs\n", ex_to_cmt_sig[0].lsu_size);
         #endif // DEBUG
         for (int i = 0; i < ex_to_cmt_sig[0].lsu_size; ++i) {
-            rob[rob_offset + ex_to_cmt_sig[0].lsu[i].idx - commit_head] = ex_to_cmt_sig[0].lsu[i];
+            rob[ex_to_cmt_sig[0].lsu[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].lsu[i];
         }
+        //rob_offset += ex_to_cmt_sig[0].lsu_size;
     }
 
+    #ifdef DEBUG
+    if (jmp_to_is_sig[0].redirect_valid) {
+        printf("redirect at ROB, instr idx = %llu\n", jmp_to_is_sig[0].instr_idx);
+    }
+    #endif
     for (int i = 0; i < ROB_SIZE; ++i) {
         if (jmp_to_is_sig[0].redirect_valid && rob[i].slot_valid && jmp_to_is_sig[0].instr_idx < rob[i].idx) {
             rob[i].slot_valid = false;
@@ -79,31 +88,31 @@ void CMT_step() {
     int commit_counter = 0;
     while (1) {
         // commit until not valid
-        if (rob[rob_offset].slot_valid) {
+        if (rob[commit_head].slot_valid) {
+            rob[commit_head].slot_valid = false; // clear after commit
             #ifdef DEBUG
-            printf("rob real commit: pc 0x%x\n", rob[rob_offset].pc);
+            printf("rob real commit: pc 0x%x instr idx = %llu\n", rob[commit_head].pc, rob[commit_head].idx);
             #endif // DEBUG
             // ready to commit
             
             // handle register write
-            if (rob[rob_offset].rd_valid) {
-                prf[rob[rob_offset].renamed.rd_phy.a] = rob[rob_offset].rd_data;
-                prf_ready[rob[rob_offset].renamed.rd_phy.a] = true;
+            if (rob[commit_head].rd_valid && rob[commit_head].renamed.rd_phy.a != 0) {
+                prf[rob[commit_head].renamed.rd_phy.a] = rob[commit_head].rd_data;
+                prf_ready[rob[commit_head].renamed.rd_phy.a] = true;
 
                 #ifdef REG_DEBUG
-                if (rob[rob_offset].ard != 0) {
-                    cmt_arf[rob[rob_offset].ard] = rob[rob_offset].rd_data;
+                if (rob[commit_head].ard != 0) {
+                    cmt_arf[rob[commit_head].ard] = rob[commit_head].rd_data;
                 }
-                printf("rob phy reg %d write data 0x%x\n", rob[rob_offset].renamed.rd_phy.a, rob[rob_offset].rd_data);
+                printf("rob phy reg %d write data 0x%x\n", rob[commit_head].renamed.rd_phy.a, rob[commit_head].rd_data);
                 
                 #endif // REG_DEBUG
             }
             
             // handle memory write
-
+            cmt_wakeup_sig[1].committed[commit_counter].recycle_dst = rob[commit_head].renamed.rd_phy.b;
             ++commit_counter;
-            rob_offset = (rob_offset + 1) % ROB_SIZE;
-            ++commit_head;
+            commit_head = (commit_head + 1) % ROB_SIZE;
             if (commit_counter >= COMMIT_SIZE) {
                 // reach our limitation
                 break;
@@ -112,11 +121,14 @@ void CMT_step() {
             break;
         }
     }
+    cmt_wakeup_sig[1].valid = true;
+    cmt_wakeup_sig[1].commit_size = commit_counter;
+    
     #ifdef REG_DEBUG
     printf("Reg Dump after commit:\n");
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 8; ++j) {
-            printf("%s: 0x%8x ", reg_name[i * 8 + j], cmt_arf[i * 8 + j]);
+            printf("%s: 0x%08x ", reg_name[i * 8 + j], cmt_arf[i * 8 + j]);
         }
         printf("\n");
         
@@ -124,7 +136,7 @@ void CMT_step() {
     printf("Phy Reg Dump after commit:\n");
     for (int i = 0; i < 12; ++i) {
         for (int j = 0; j < 8; ++j) {
-            printf("phy %2d:0x%8x ", i * 8 + j, prf[i * 8 + j]);
+            printf("phy %2d:0x%08x ", i * 8 + j, prf[i * 8 + j]);
         }
         printf("\n");
     }
