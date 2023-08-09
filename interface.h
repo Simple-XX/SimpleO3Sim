@@ -82,6 +82,7 @@ struct rename_info {
     int rs1_phy, rs2_phy;
     bool rs1_ready, rs2_ready;
     struct int_pair rd_phy;
+    int arch_rd;
     uint32_t rs1_data, rs2_data;
 };
 

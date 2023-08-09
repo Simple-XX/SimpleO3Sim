@@ -11,6 +11,7 @@
 #include "CMT.h"
 #include "fakeCMT.h"
 #include "ram.h"
+#include "diff.h"
 
 extern struct if_to_id if_to_id_sig[2];
 extern struct id_to_if id_to_if_sig[2];
@@ -59,6 +60,9 @@ void move_sigs() {
 int main(int argc, char* argv[]) {
 	parse_arg(argc, argv);
 	init_ram();
+	#ifdef DIFFTEST
+	init_diff();
+	#endif
 
 	RN_init();
 	uint64_t global_cycle = 0;

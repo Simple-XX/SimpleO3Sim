@@ -1,4 +1,6 @@
 #include "IS.h"
+
+#include "RN.h"
 extern struct cmt_wakeup_info cmt_wakeup_sig[2];
 
 extern struct rn_to_is rn_to_is_sig[2];
@@ -8,6 +10,8 @@ struct is_to_ex is_to_ex_sig[2];
 extern struct ex_to_is ex_to_is_sig[2];
 
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
+extern uint32_t prf[PRF_SIZE];
 
 struct ScoreBoard {
     // all renamed
@@ -71,15 +75,23 @@ void IS_step() {
     }
     if (cmt_wakeup_sig[0].valid) {
         // accept any possible commit wakeup
+        #ifdef DEBUG
+        printf("IS: accept commit wakeup\n");
+        for (int i = 0; i < cmt_wakeup_sig[0].commit_size; i++) {
+            printf("recycle dst %d\n", cmt_wakeup_sig[0].committed[i].recycle_dst);
+        }
+        #endif // DEBUG
         for (int i = 0; i < scoreboard_size; ++i) {
             for (int j = 0; j < cmt_wakeup_sig[0].commit_size; ++j) {
                 if (scoreboard[i].rs1 == cmt_wakeup_sig[0].committed[j].recycle_dst) {
                     scoreboard[i].rs1_ready = true;
                     scoreboard[i].renamed.rs1_ready = true;
+                    scoreboard[i].renamed.rs1_data = prf[cmt_wakeup_sig[0].committed[j].recycle_dst];
                 }
                 if (scoreboard[i].rs2 == cmt_wakeup_sig[0].committed[j].recycle_dst) {
                     scoreboard[i].rs2_ready = true;
                     scoreboard[i].renamed.rs2_ready = true;
+                    scoreboard[i].renamed.rs2_data = prf[cmt_wakeup_sig[0].committed[j].recycle_dst];
                 }
             }
             
@@ -101,7 +113,7 @@ void IS_step() {
     for (int i = 0; i < scoreboard_size; ++i) {
         if (ready_to_launch(&scoreboard[i].decoded, &scoreboard[i].renamed)) {
             #ifdef DEBUG
-            printf("IS: ready to launch pc %x\n", scoreboard[i].decoded.pc);
+            printf("IS: ready to launch pc %x rs1 phy %d rs2 phy %d\n", scoreboard[i].decoded.pc, scoreboard[i].rs1, scoreboard[i].rs2);
             #endif // DEBUG
             if (!scoreboard[i].valid) {
                 ++missed_count;
@@ -163,7 +175,7 @@ void IS_step() {
     printf("After squash, scoreboard:\n");
     for (int i = 0; i < ISSUE_QUEUE_SIZE; ++i) {
         if (!scoreboard[i].issued && scoreboard[i].valid)
-        printf("pc %x type %d rs1 ready %d rs2 ready %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1_ready, scoreboard[i].rs2_ready);
+            printf("pc %x type %d rs1 phy %d ready %d rs2 phy %d ready %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1, scoreboard[i].rs1_ready, scoreboard[i].rs2, scoreboard[i].rs2_ready);
     }
     #endif // DEBUG
     if (scoreboard_size + RENAME_MAX > ISSUE_QUEUE_SIZE) {

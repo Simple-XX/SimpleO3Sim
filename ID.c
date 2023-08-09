@@ -175,6 +175,7 @@ struct decode_info decode(const uint32_t instr) {
 // i.e. if we have more branch than expected, only send some of them to rename
 void ID_step() {
     if (jmp_to_is_sig[0].redirect_valid) {
+        printf("ID redirect handling\n");
         // flush the entire queue
         decode_queue_start = 0;
         decode_queue_end = 0;
