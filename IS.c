@@ -11,7 +11,7 @@ extern struct ex_to_is ex_to_is_sig[2];
 
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
-extern uint32_t prf[PRF_SIZE];
+extern uint64_t prf[PRF_SIZE];
 
 struct ScoreBoard {
     // all renamed
@@ -113,7 +113,9 @@ void IS_step() {
     for (int i = 0; i < scoreboard_size; ++i) {
         if (ready_to_launch(&scoreboard[i].decoded, &scoreboard[i].renamed)) {
             #ifdef DEBUG
-            printf("IS: ready to launch pc %x rs1 phy %d rs2 phy %d\n", scoreboard[i].decoded.pc, scoreboard[i].rs1, scoreboard[i].rs2);
+            if (scoreboard[i].valid) {
+                printf("IS: ready to launch pc %x rs1 phy %d rs2 phy %d\n", scoreboard[i].decoded.pc, scoreboard[i].rs1, scoreboard[i].rs2);
+            }
             #endif // DEBUG
             if (!scoreboard[i].valid) {
                 ++missed_count;
@@ -136,7 +138,7 @@ void IS_step() {
                 is_to_ex_sig[1].mdu[issued_count - 1].valid = true;
                 is_to_ex_sig[1].mdu[issued_count - 1].decoded = scoreboard[i].decoded;
                 is_to_ex_sig[1].mdu[issued_count - 1].renamed = scoreboard[i].renamed;
-            } else if (scoreboard[i].decoded.instr_type == TYPE_B || scoreboard[i].decoded.instr_type == TYPE_J) {
+            } else if (scoreboard[i].decoded.instr_type == TYPE_B || scoreboard[i].decoded.instr_type == TYPE_J || scoreboard[i].decoded.branch_type == JALR) {
                 is_to_ex_sig[1].jmp_size++;
                 jmp_count = is_to_ex_sig[1].jmp_size;
                 is_to_ex_sig[1].jmp[jmp_count - 1].valid = true;

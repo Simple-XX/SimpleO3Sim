@@ -17,6 +17,12 @@ struct ex_mduInfo mdu_pipeline[MDU_DELAY][MDU_SIZE + 1];
 struct ex_lsuInfo lsu_pipeline[LSU_DELAY][LSU_SIZE + 1];
 
 void jmpUnit() {
+    for (int i = 0; i < JMP_SIZE; ++i) {
+        // print all instructions incoming
+        if (is_to_ex_sig[0].jmp[i].valid) {
+            printf("jmp pc %lx\n", is_to_ex_sig[0].jmp[i].decoded.pc);
+        }
+    }
     if (jmp_to_is_sig[0].redirect_valid) {
         // if flush, remove all instructions after flush point
         for (int i = 0; i <= JMP_SIZE; ++i) {
@@ -57,10 +63,16 @@ void jmpUnit() {
 
     // if there is a branch/jmp instruction
     if (is_to_ex_sig[0].valid && is_to_ex_sig[0].jmp_size) {
+        if (is_to_ex_sig[0].jmp_size > JMP_SIZE) {
+            printf("jmp size %d\n", is_to_ex_sig[0].jmp_size);
+            for (int i = 0; i < is_to_ex_sig[0].jmp_size; ++i) {
+                printf("jmp pc %lx\n", is_to_ex_sig[0].jmp[i].decoded.pc);
+            }
+        }
         assert(is_to_ex_sig[0].jmp_size <= JMP_SIZE);
         // accept incoming instructions
         for (int i = 0; i < is_to_ex_sig[0].jmp_size; ++i) {
-            assert(is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_B || is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_J);
+            assert(is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_B || is_to_ex_sig[0].jmp[i].decoded.instr_type == TYPE_J || is_to_ex_sig[0].jmp[i].decoded.branch_type == JALR);
             jmp_pipeline[0][i] = is_to_ex_sig[0].jmp[i];
         }
     }

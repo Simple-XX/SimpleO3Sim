@@ -8,9 +8,9 @@
 struct ram_req {
     bool valid;
     bool wr;
-    uint32_t size;  // 0: 1 byte 1: 2 bytes 2: 4 bytes 3: 8 bytes 4: 16 bytes
-    uint32_t addr;  // should always be false for instr
-    uint32_t wdata; // should always be ignored by instr
+    uint64_t size;  // 0: 1 byte 1: 2 bytes 2: 4 bytes 3: 8 bytes 4: 16 bytes
+    uint64_t addr;  // should always be false for instr
+    uint64_t wdata; // should always be ignored by instr
 };
 
 struct ram_resp {
@@ -24,7 +24,7 @@ struct if_to_id {
 
     int instr_size;
     uint32_t instr[4];
-    uint32_t fetch_pc;
+    uint64_t fetch_pc;
 };
 
 struct id_to_if {
@@ -35,7 +35,7 @@ struct id_to_if {
 // ID to RN
 
 enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
-enum ALU_TYPE {ADD, SUB, SLT, SLTU, OR, XOR, AND, SLL, SRL, SRA, LUI, AUIPC};
+enum ALU_TYPE {ADD, ADDW, SUB, SUBW, SLT, SLTU, OR, XOR, AND, SLL, SLLW, SRLW, SRAW, SRL, SRA, LUI, AUIPC};
 enum MDU_TYPE {MUL, MULH, MULHSU, MULHU, DIV, DIVU, REMU, REM};
 enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
 enum branch_type {BEQ, BNE, BLT, BGE, BLTU, BGEU, JAL, JALR};
@@ -51,8 +51,8 @@ struct decode_info {
     enum ALU_TYPE alu_type;
     enum MDU_TYPE mdu_type;
     int rs1, rs2, rd;
-    uint32_t imm;
-    uint32_t pc;
+    uint64_t imm;
+    uint64_t pc;
     int instr_type;
     int branch_type;
     bool shift_imm; // only for identification of s{r/l}{l/a}i
@@ -83,7 +83,7 @@ struct rename_info {
     bool rs1_ready, rs2_ready;
     struct int_pair rd_phy;
     int arch_rd;
-    uint32_t rs1_data, rs2_data;
+    uint64_t rs1_data, rs2_data;
 };
 
 struct rn_to_is {
@@ -161,22 +161,22 @@ struct ex_to_is {
 struct commitInfo {
     bool slot_valid;
 
-    uint32_t pc; // for debug only
+    uint64_t pc; // for debug only
     int ard; // for debug only
     
     struct rename_info renamed;
     bool rd_valid;
-    uint32_t rd_data;
+    uint64_t rd_data;
 
     bool store_valid;
-    uint32_t store_data;
+    uint64_t store_data;
     uint64_t idx;
 };
 
 struct jmp_redirectInfo {
     // redirect with instruction count number
     bool redirect_valid;
-    uint32_t redirect_pc;
+    uint64_t redirect_pc;
     uint64_t instr_idx;
     int current_jmp;
 };
@@ -214,15 +214,15 @@ struct cmt_wakeup_info {
 
 struct lsu_to_clint {
     bool valid;
-    uint32_t addr;
+    uint64_t addr;
     bool write;
-    uint32_t data;
-    uint32_t size;
+    uint64_t data;
+    uint64_t size;
 };
 
 struct clint_to_lsu {
     bool valid;
-    uint32_t rdata;
+    uint64_t rdata;
 };
 
 struct clint_interrupt {
@@ -235,11 +235,11 @@ struct csr_req {
     // foo
     enum CSR_OP op;
     uint32_t csrAddr;
-    uint32_t rs_data;
+    uint64_t rs_data;
 };
 struct csr_resp {
     // foo
-    uint32_t rd_data;
+    uint64_t rd_data;
 };
 
 #endif

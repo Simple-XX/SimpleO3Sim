@@ -2,6 +2,7 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include "utils.h"
+#include "common.h"
 
 void (*spike_memcpy)(uint64_t nemu_addr, void *dut_buf, size_t n, bool direction) = NULL;
 void (*regcpy)(void *dut, bool direction) = NULL;
@@ -54,7 +55,7 @@ int init_diff() {
     printf("init finished\n");
 
     // load bianry file to binary buf
-    FILE *fp = fopen("./test.bin", "r");
+    FILE *fp = fopen(ram_file, "r");
     if (!fp) {
         printf("open file failed\n");
         return 1;

@@ -11,16 +11,16 @@ extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 #ifdef REG_DEBUG
 #include "RN.h"
-uint32_t cmt_arf[32];
+uint64_t cmt_arf[32];
 
 char* reg_name[32] = {"x0", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0/fp", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"};
 
-extern uint32_t prf[PRF_SIZE];
+extern uint64_t prf[PRF_SIZE];
 #endif // REG_DEBUG
 
 #include "RN.h"
 
-extern uint32_t prf[PRF_SIZE];
+extern uint64_t prf[PRF_SIZE];
 extern bool prf_ready[PRF_SIZE];
 
 // commit_head: the index of the instruction that

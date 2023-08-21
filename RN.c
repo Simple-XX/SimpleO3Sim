@@ -11,7 +11,7 @@ extern struct is_to_rn is_to_rn_sig[2];
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 // always assign r0 with prf[0]
-uint32_t prf[PRF_SIZE];
+uint64_t prf[PRF_SIZE];
 bool prf_ready[PRF_SIZE];
 
 // free list act as a stack
