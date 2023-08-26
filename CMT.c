@@ -75,7 +75,14 @@ void CMT_step() {
         for (int i = 0; i < ex_to_cmt_sig[0].lsu_size; ++i) {
             rob[ex_to_cmt_sig[0].lsu[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].lsu[i];
         }
+        #ifdef DEBUG
+        printf("csr unit wants to commit %d instrs\n", ex_to_cmt_sig[0].csr_size);
+        #endif // DEBUG
         //rob_offset += ex_to_cmt_sig[0].lsu_size;
+        for (int i = 0; i < ex_to_cmt_sig[0].csr_size; ++i) {
+            printf("idx %llu\n", ex_to_cmt_sig[0].csr[i].idx % ROB_SIZE);
+            rob[ex_to_cmt_sig[0].csr[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].csr[i];
+        }
     }
 
     #ifdef DEBUG
@@ -135,6 +142,12 @@ void CMT_step() {
                 cmt_wakeup_sig[1].committed[commit_counter].recycle_dst = rob[commit_head].renamed.rd_phy.a;
             } else {
                 cmt_wakeup_sig[1].committed[commit_counter].recycle_dst = -1;
+            }
+            if (rob[commit_head].renamed.is_csr) {
+                cmt_wakeup_sig[1].committed[commit_counter].is_csr = true;
+                cmt_wakeup_sig[1].committed[commit_counter].csr_instr = rob[commit_head].renamed.csr_instr;
+            } else {
+                cmt_wakeup_sig[1].committed[commit_counter].is_csr = false;
             }
             ++commit_counter;
             commit_head = (commit_head + 1) % ROB_SIZE;

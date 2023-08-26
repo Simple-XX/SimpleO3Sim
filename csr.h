@@ -5,6 +5,7 @@
 #include "common.h"
 
 void csr_step();
+uint64_t * get_csr(uint64_t addr);
 
 #define CSR_MSTATUS 0x300
 #define CSR_MISA 0x301

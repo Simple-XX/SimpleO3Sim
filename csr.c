@@ -129,7 +129,7 @@ void csr_init() {
 struct csr_req csr_req_sig[2];
 struct csr_resp csr_resp_sig[2];
 
-static uint64_t * get_csr(uint64_t addr) {
+uint64_t * get_csr(uint64_t addr) {
     switch (addr) {
         case CSR_MSTATUS:
             return &mstatus;

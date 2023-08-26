@@ -122,6 +122,8 @@ void RN_step() {
             }
             rn_to_is_sig[1].renamed[i].current_jmp = current_jmp;
             rn_to_is_sig[1].renamed[i].arch_rd = id_to_rn_sig[0].decoded[i].rd;
+            rn_to_is_sig[1].renamed[i].is_csr = id_to_rn_sig[0].decoded[i].is_csr;
+            rn_to_is_sig[1].renamed[i].csr_instr = id_to_rn_sig[0].decoded[i].instr_idx;
             
             if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_I) {
                 rn_to_is_sig[1].renamed[i].rs2_phy = 0;

@@ -50,7 +50,6 @@ void move_sigs() {
 	is_to_ex_sig[0] = is_to_ex_sig[1];
 	ex_to_is_sig[0] = ex_to_is_sig[1];
 	cmt_wakeup_sig[0] = cmt_wakeup_sig[1];
-	is_to_ex_sig[0] = is_to_ex_sig[1];
 	ex_to_is_sig[0] = ex_to_is_sig[1];
 	ex_to_cmt_sig[0] = ex_to_cmt_sig[1];
 	cmt_to_ex_sig[0] = cmt_to_ex_sig[1];

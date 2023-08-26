@@ -49,6 +49,7 @@ struct decode_info decode(const uint32_t instr) {
     bool mul, mulh, mulhu, mulhsu, div, divu, rem, remu;
     bool addiw, slliw, srliw, sraiw;
     bool addw, subw, sllw, srlw, sraw;
+    bool csrrs, csrrw, csrrc, csrrsi, csrrwi, csrrci;
     
 
     lui = opcode == 0x37;
@@ -108,19 +109,35 @@ struct decode_info decode(const uint32_t instr) {
     divu  = opcode == 0x33 && funct3 == 0x05 && funct7 == 01;
     rem   = opcode == 0x33 && funct3 == 0x06 && funct7 == 01;
     remu  = opcode == 0x33 && funct3 == 0x07 && funct7 == 01;
+    csrrc = opcode == 0x73 && funct3 == 0x3;
+    csrrs = opcode == 0x73 && funct3 == 0x2;
+    csrrw = opcode == 0x73 && funct3 == 0x1;
+    csrrci= opcode == 0x73 && funct3 == 0x7;
+    csrrsi= opcode == 0x73 && funct3 == 0x6;
+    csrrwi= opcode == 0x73 && funct3 == 0x5;
 
     ret.is_branch = beq | bne | blt | bge | bltu | bgeu;
-    ret.is_lsu = lb | lh | lw | lbu | lhu | sb | sh | sw;
-    ret.is_load = lb | lh | lw | lbu | lhu ;
-    ret.is_store = sb | sh | sw;
+    ret.is_lsu = lb | lh | lw | ld | lbu | lhu | lwu | sb | sh | sw | sd;
+    ret.is_load = lb | lh | lw | ld | lwu | lbu | lhu;
+    ret.is_store = sb | sh | sw | sd;
+    ret.is_csr = csrrc | csrrs | csrrw | csrrci | csrrsi | csrrwi;
+    ret.csr_type = csrrc ? CSRRC :
+                   csrrs ? CSRRS :
+                   csrrw ? CSRRW :
+                   csrrci ? CSRRCI :
+                   csrrsi ? CSRRSI :
+                   csrrwi ? CSRRWI : 0xff;
     ret.lsu_type = sb ? SB :
                    sh ? SH :
                    sw ? SW :
+                   sd ? SD :
                    lb ? LB :
                    lh ? LH :
                    lw ? LW :
+                   ld ? LD :
                    lbu ? LBU :
-                   lhu ? LHU : 0xff;
+                   lhu ? LHU :
+                   lwu ? LWU : 0xff;
     ret.is_alu = lui | auipc | addi | slti | sltiu | xori | ori | andi | slli |
                  srli | srai | add | sub | sll | slt | sltu | xor | srl | sra |
                  or | and | addiw | slliw | srliw | sraiw | addw | subw | sllw |
@@ -152,9 +169,9 @@ struct decode_info decode(const uint32_t instr) {
                    rem ? REM :
                    remu ? REMU : 0xff;
     bool shift_imm = slli | srli | srai | slliw | srliw | sraiw;
-    bool type_i = jalr | lb | lh | lw | lbu | lhu |
-      addi | slti | sltiu | xori | ori | andi | addiw;
-    bool type_s = sb | sh | sw;
+    bool type_i = jalr | lb | lh | lw | ld | lbu | lhu | lwu |
+      addi | slti | sltiu | xori | ori | andi | addiw | csrrc | csrrs | csrrw | csrrci | csrrsi | csrrwi;
+    bool type_s = sb | sh | sw | sd;
     bool type_b = beq | bne | blt | bge | bltu | bgeu;
     int branch_type = beq ? BEQ :
                       bne ? BNE :

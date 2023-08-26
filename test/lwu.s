@@ -1,6 +1,10 @@
 _start:
     lui a0, %hi(0x80000000)
-    lwu a1, 0(a0)
+    slli a0, a0, 16
+    slli a0, a0, 16
+    srli a0, a0, 16
+    srli a0, a0, 16
+    lwu a1, 8(a0)
     nop
     nop
     nop

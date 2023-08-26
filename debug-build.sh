@@ -1,4 +1,4 @@
-gcc -DDEBUG -DREG_DEBUG -DDIFFTEST main.c CMT.c EX.c ID.c IF.c IS.c ram.c RN.c uart.c fakeCMT.c EX_impl.c diff.c -o o3sim -fsanitize=address -g
+gcc -DDEBUG -DREG_DEBUG -DDIFFTEST main.c CMT.c EX.c ID.c IF.c IS.c ram.c RN.c uart.c fakeCMT.c EX_impl.c csr.c diff.c -o o3sim -fsanitize=address -g
 
 # FIXME: with asan and debug info, runs well
 # with asan and no debug info, runs well

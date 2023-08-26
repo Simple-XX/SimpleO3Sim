@@ -1,4 +1,5 @@
 #include "EX_impl.h"
+#include "csr.h"
 
 extern struct ex_to_cmt ex_to_cmt_sig[2];
 #include "interface.h"
@@ -144,14 +145,66 @@ void ALU_calc(struct decode_info decoded, struct rename_info renamed, int offset
     }
 }
 
+extern char* ram;
+extern uint16_t *ram_half;
+extern uint32_t *ram_word;
+extern uint64_t *ram_double;
+
 void LSU_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
     // load/store instruction
-}
+    ex_to_cmt_sig[1].lsu[offset].pc = decoded.pc;
+    ex_to_cmt_sig[1].lsu[offset].slot_valid = true;
+    ex_to_cmt_sig[1].lsu[offset].ard = decoded.rd;
+    if (decoded.is_load) {
+        ex_to_cmt_sig[1].lsu[offset].rd_valid = true;
+    }
+    printf("decode imm %d rs1 %lx\n", decoded.imm, renamed.rs1_data);
 
+    switch (decoded.lsu_type) {
+        case LB:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = (int8_t)ram[renamed.rs1_data + decoded.imm - 0x80000000];
+            break;
+        case LH:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = (int16_t)ram_half[(renamed.rs1_data + decoded.imm - 0x80000000) / 2];
+            break;
+        case LW:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = (int32_t)ram_word[(renamed.rs1_data + decoded.imm - 0x80000000) / 4];
+            break;
+        case LBU:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = ram[renamed.rs1_data + decoded.imm - 0x80000000];
+            break;
+        case LHU:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = (uint16_t)ram_half[(renamed.rs1_data + decoded.imm - 0x80000000) / 2];
+            break;
+        case LWU:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = (uint32_t)ram_word[(renamed.rs1_data + decoded.imm - 0x80000000) / 4];
+            break;
+        case LD:
+            ex_to_cmt_sig[1].lsu[offset].rd_data = (uint64_t)ram_double[(renamed.rs1_data + decoded.imm - 0x80000000) / 8];
+            printf("LD\n");
+            break;
+        case SB:
+            ram[renamed.rs1_data + decoded.imm - 0x80000000] = renamed.rs2_data;
+            break;
+        case SH:
+            ram_half[(renamed.rs1_data + decoded.imm - 0x80000000) / 2] = renamed.rs2_data;
+            break;
+        case SW:
+            ram_word[(renamed.rs1_data + decoded.imm - 0x80000000) / 4] = renamed.rs2_data;
+            break;
+        case SD:
+            printf("SD\n");
+            ram_double[(renamed.rs1_data + decoded.imm - 0x80000000) / 8] = renamed.rs2_data;
+            break;
+        default:
+            break;
+    }
+}
+/*
 void CSR_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
     // CSR instruction
 
-}
+}*/
 
 void MDU_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
     // multiply/division instruction
@@ -265,4 +318,49 @@ void JMP_calc(struct decode_info decoded, struct rename_info renamed, int offset
         jmp_to_is_sig[1].redirect_valid = false;
     }
     
+}
+
+void CSR_calc(struct decode_info decoded, struct rename_info renamed, int offset) {
+    ex_to_cmt_sig[1].csr[offset].pc = decoded.pc;
+    ex_to_cmt_sig[1].csr[offset].slot_valid = true;
+    ex_to_cmt_sig[1].csr[offset].rd_valid = true;
+    ex_to_cmt_sig[1].csr[offset].ard = decoded.rd;
+
+    int csr_addr = decoded.imm;
+    uint64_t *csr_src = get_csr(csr_addr);
+    uint64_t rs_data, csr_data = *csr_src;
+
+    switch (decoded.csr_type) {
+        case CSRRW:
+            rs_data = renamed.rs1_data;
+            *csr_src = rs_data;
+            printf("CSRRW rs_data %lx csr_src %lx rd_data %lx\n", rs_data, *csr_src, csr_data);
+            break;
+        case CSRRC:
+            rs_data = renamed.rs1_data;
+            *csr_src = *csr_src ^ rs_data;
+            printf("CSRRC rs_data %lx csr_src %lx rd_data %lx\n", rs_data, *csr_src, csr_data);
+            break;
+        case CSRRS:
+            rs_data = renamed.rs1_data;
+            *csr_src = *csr_src | rs_data;
+            printf("CSRRS rs_data %lx csr_src %lx rd_data %lx\n", rs_data, *csr_src, csr_data);
+            break;
+        case CSRRWI:
+            rs_data = decoded.rs1;
+            *csr_src = rs_data;
+            printf("CSRRWI rs_data %lx csr_src %lx rd_data %lx\n", rs_data, *csr_src, csr_data);
+            break;
+        case CSRRCI:
+            rs_data = decoded.rs1;
+            *csr_src = *csr_src ^ rs_data;
+            printf("CSRRCI rs_data %lx csr_src %lx rd_data %lx\n", rs_data, *csr_src, csr_data);
+            break;
+        case CSRRSI:
+            rs_data = decoded.rs1;
+            *csr_src = *csr_src | rs_data;
+            printf("CSRRSI rs_data %lx csr_src %lx rd_data %lx\n", rs_data, *csr_src, csr_data);
+            break;
+    }
+    ex_to_cmt_sig[1].csr[offset].rd_data = csr_data;
 }

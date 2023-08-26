@@ -15,6 +15,7 @@ struct ex_jmpInfo jmp_pipeline[JMP_DELAY][JMP_SIZE + 1];
 struct ex_aluInfo alu_pipeline[ALU_DELAY][ALU_SIZE + 1];
 struct ex_mduInfo mdu_pipeline[MDU_DELAY][MDU_SIZE + 1];
 struct ex_lsuInfo lsu_pipeline[LSU_DELAY][LSU_SIZE + 1];
+struct ex_csrInfo csr_pipeline[CSR_DELAY][CSR_SIZE + 1];
 
 void jmpUnit() {
     for (int i = 0; i < JMP_SIZE; ++i) {
@@ -85,9 +86,14 @@ void lsUnit() {
     // firstly deal with the result that will come out of this stag
     for (int i = 0; i <= LSU_SIZE; ++i) {
         if (lsu_pipeline[LSU_DELAY - 1][i].valid) {
-            // we have a valid request
-        } else {
-            // valid signals must be consecutive
+            LSU_calc(lsu_pipeline[LSU_DELAY - 1][i].decoded,
+                     lsu_pipeline[LSU_DELAY - 1][i].renamed,
+                     i
+            );
+            ex_to_cmt_sig[1].valid = true;
+            ex_to_cmt_sig[1].lsu[i].idx = lsu_pipeline[LSU_DELAY - 1][i].decoded.instr_idx;
+            ++ex_to_cmt_sig[1].lsu_size;
+            ex_to_cmt_sig[1].lsu[i].renamed = lsu_pipeline[LSU_DELAY - 1][i].renamed;
         }
     }
     // every other stages move forward
@@ -106,6 +112,54 @@ void lsUnit() {
     }
     for (int i = is_to_ex_sig[0].lsu_size; i < LSU_SIZE; ++i) {
         lsu_pipeline[0][i].valid = false;
+    }
+}
+
+void csrUnit() {
+    // if flush, remove all instructions after flush point
+    for (int i = 0; i <= CSR_SIZE; ++i) {
+        for (int j = 0; j < CSR_DELAY; ++j) {
+            if (csr_pipeline[j][i].decoded.instr_idx > jmp_to_is_sig[0].instr_idx) {
+                csr_pipeline[j][i].valid = false;
+            }
+        }
+    }
+
+    // if there is a csr instruction
+    if (is_to_ex_sig[0].valid && is_to_ex_sig[0].csr_size) {
+        assert(is_to_ex_sig[0].csr_size <= CSR_SIZE);
+        for (int i = 0; i < is_to_ex_sig[0].csr_size; ++i) {
+            csr_pipeline[0][i] = is_to_ex_sig[0].csr[i];
+        }
+        
+    }
+
+    // firstly deal with the result that will come out of this stage
+    ex_to_cmt_sig[1].csr_size = 0;
+    for (int i = 0; i <= CSR_SIZE; ++i) {
+        if (csr_pipeline[CSR_DELAY - 1][i].valid) {
+            // we have a valid request
+            printf("valid csr instr pc %lx idx %d\n", csr_pipeline[CSR_DELAY - 1][i].decoded.pc, csr_pipeline[CSR_DELAY - 1][i].decoded.instr_idx);
+            ex_to_cmt_sig[1].valid = true;
+            CSR_calc(csr_pipeline[CSR_DELAY - 1][i].decoded,
+                     csr_pipeline[CSR_DELAY - 1][i].renamed,
+                     i
+            );
+            ex_to_cmt_sig[1].csr[i].idx = csr_pipeline[CSR_DELAY - 1][i].decoded.instr_idx;
+            printf("csr idx %llu\n", csr_pipeline[CSR_DELAY - 1][i].decoded.instr_idx);
+            ++ex_to_cmt_sig[1].csr_size;
+            ex_to_cmt_sig[1].csr[i].renamed = csr_pipeline[CSR_DELAY - 1][i].renamed;
+        } else {
+            // may have flush, no ops
+            // valid signals must be consecutive
+            // break;
+        }
+    }
+
+    for (int i = 0; i < CSR_DELAY - 1; ++i) {
+        for (int j = 0; j < CSR_SIZE; ++j) {
+            csr_pipeline[i+1][j] = csr_pipeline[i][j];
+        }
     }
 }
 
@@ -186,7 +240,7 @@ void mdUnit() {
 
 void EX_step() {
     #ifdef DEBUG
-    printf("EX: alu %d instrs mdu %d instrs lsu %d instrs jmp %d instrs\n", is_to_ex_sig[0].alu_size, is_to_ex_sig[0].mdu_size, is_to_ex_sig[0].lsu_size, is_to_ex_sig[0].jmp_size);
+    printf("EX: alu %d instrs mdu %d instrs lsu %d instrs jmp %d instrs csr %d instrs\n", is_to_ex_sig[0].alu_size, is_to_ex_sig[0].mdu_size, is_to_ex_sig[0].lsu_size, is_to_ex_sig[0].jmp_size, is_to_ex_sig[0].csr_size);
     #endif // DEBUG
     // execuction
     ex_to_cmt_sig[1].valid = false;
@@ -194,4 +248,5 @@ void EX_step() {
     lsUnit();
     jmpUnit();
     mdUnit();
+    csrUnit();
 }

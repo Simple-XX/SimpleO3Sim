@@ -34,17 +34,20 @@ struct id_to_if {
 
 // ID to RN
 
-enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU};
+enum LS_TYPE {LW, LH, LB, SW, SH, SB, LHU, LBU, LD, SD, LWU};
 enum ALU_TYPE {ADD, ADDW, SUB, SUBW, SLT, SLTU, OR, XOR, AND, SLL, SLLW, SRLW, SRAW, SRL, SRA, LUI, AUIPC};
 enum MDU_TYPE {MUL, MULH, MULHSU, MULHU, DIV, DIVU, REMU, REM};
 enum instr_type {TYPE_B, TYPE_S, TYPE_I, TYPE_J, TYPE_R, TYPE_U};
 enum branch_type {BEQ, BNE, BLT, BGE, BLTU, BGEU, JAL, JALR};
+enum CSR_TYPE {CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI};
 
 struct decode_info {
 // every instruction has a decode info
     bool is_branch;
     bool is_lsu;
     bool is_load, is_store;
+    bool is_csr;
+    enum CSR_TYPE csr_type;
     int lsu_type;
     bool is_alu;
     bool is_mdu;
@@ -84,6 +87,8 @@ struct rename_info {
     struct int_pair rd_phy;
     int arch_rd;
     uint64_t rs1_data, rs2_data;
+    bool is_csr;
+    uint64_t csr_instr;
 };
 
 struct rn_to_is {
@@ -114,6 +119,12 @@ struct ex_aluInfo {
     struct rename_info renamed;
 };
 
+struct ex_csrInfo {
+    bool valid;
+    struct decode_info decoded;
+    struct rename_info renamed;
+};
+
 struct ex_mduInfo {
     bool valid;
     struct decode_info decoded;
@@ -129,12 +140,14 @@ struct ex_lsuInfo {
 #define JMP_SIZE 1
 #define ALU_SIZE 4
 #define MDU_SIZE 2
-#define LSU_SIZE 1
+#define LSU_SIZE 4
+#define CSR_SIZE 1
 
 #define ALU_DELAY 1
 #define JMP_DELAY 1
 #define MDU_DELAY 2
 #define LSU_DELAY 1
+#define CSR_DELAY 1
 
 struct is_to_ex {
     bool valid;
@@ -144,10 +157,12 @@ struct is_to_ex {
     int alu_size;
     int mdu_size;
     int lsu_size;
+    int csr_size;
     struct ex_jmpInfo jmp[JMP_SIZE];
     struct ex_aluInfo alu[ALU_SIZE];
     struct ex_mduInfo mdu[MDU_SIZE];
     struct ex_lsuInfo lsu[LSU_SIZE];
+    struct ex_csrInfo csr[CSR_SIZE];
 };
 
 struct ex_to_is {
@@ -184,11 +199,12 @@ struct jmp_redirectInfo {
 struct ex_to_cmt {
     bool valid;
 
-    int jmp_size, alu_size, mdu_size, lsu_size;
+    int jmp_size, alu_size, mdu_size, lsu_size, csr_size;
     struct commitInfo jmp[JMP_SIZE];
     struct commitInfo alu[ALU_SIZE];
     struct commitInfo mdu[MDU_SIZE];
     struct commitInfo lsu[LSU_SIZE];
+    struct commitInfo csr[CSR_SIZE];
 };
 
 struct cmt_to_ex {
@@ -200,6 +216,8 @@ struct cmt_to_ex {
 struct wakeup_info {
     // if an instruction overwrites the dst, we are free to recycle the previous one
     int recycle_dst;
+    bool is_csr;
+    uint64_t csr_instr;
 };
 
 #define COMMIT_SIZE 4

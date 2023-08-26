@@ -17,11 +17,16 @@ sub subw xor xori lui
 
 jalr
 
-## failed
+csrrwi csrrci csrrsi
+csrrw csrrc csrrs
 
 lb lh lw ld lbu lhu lwu
 sb sh sw sd
 
+## failed
+
+Cleared
+
 ## todo
 
-zicsr
+Cleared
