@@ -1,4 +1,6 @@
 #include "IS.h"
+
+#include "RN.h"
 extern struct cmt_wakeup_info cmt_wakeup_sig[2];
 
 extern struct rn_to_is rn_to_is_sig[2];
@@ -8,6 +10,8 @@ struct is_to_ex is_to_ex_sig[2];
 extern struct ex_to_is ex_to_is_sig[2];
 
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
+
+extern uint64_t prf[PRF_SIZE];
 
 struct ScoreBoard {
     // all renamed
@@ -27,6 +31,12 @@ int scoreboard_size = 0;
 
 bool ready_to_launch(struct decode_info *decoded, struct rename_info *renamed) {
     // decide if we are free to issue
+    if (decoded->csr_type <= CSRRC) {
+        printf("checking csrr %d rs1_ready %d\n", decoded->csr_type, renamed->rs1_ready);
+        return renamed->rs1_ready;
+    } else if (decoded->csr_type <= CSRRCI) {
+        return true; // no rs dependency
+    }
     switch (decoded->instr_type) {
         case TYPE_I:
             return renamed->rs1_ready;
@@ -43,6 +53,9 @@ bool ready_to_launch(struct decode_info *decoded, struct rename_info *renamed) {
     }
     return false;
 }
+
+bool csr_issued = false;
+uint64_t csr_instr;
 
 void IS_step() {
     int issue_size;
@@ -70,16 +83,29 @@ void IS_step() {
         scoreboard_size += issue_size;
     }
     if (cmt_wakeup_sig[0].valid) {
+        for (int j = 0; j < cmt_wakeup_sig[0].commit_size; ++j) {
+            if (cmt_wakeup_sig[0].committed[j].is_csr && cmt_wakeup_sig[0].committed[j].csr_instr == csr_instr) {
+                csr_issued = false;
+            }
+        }
         // accept any possible commit wakeup
+        #ifdef DEBUG
+        printf("IS: accept commit wakeup\n");
+        for (int i = 0; i < cmt_wakeup_sig[0].commit_size; i++) {
+            printf("recycle dst %d\n", cmt_wakeup_sig[0].committed[i].recycle_dst);
+        }
+        #endif // DEBUG
         for (int i = 0; i < scoreboard_size; ++i) {
             for (int j = 0; j < cmt_wakeup_sig[0].commit_size; ++j) {
                 if (scoreboard[i].rs1 == cmt_wakeup_sig[0].committed[j].recycle_dst) {
                     scoreboard[i].rs1_ready = true;
                     scoreboard[i].renamed.rs1_ready = true;
+                    scoreboard[i].renamed.rs1_data = prf[cmt_wakeup_sig[0].committed[j].recycle_dst];
                 }
                 if (scoreboard[i].rs2 == cmt_wakeup_sig[0].committed[j].recycle_dst) {
                     scoreboard[i].rs2_ready = true;
                     scoreboard[i].renamed.rs2_ready = true;
+                    scoreboard[i].renamed.rs2_data = prf[cmt_wakeup_sig[0].committed[j].recycle_dst];
                 }
             }
             
@@ -94,14 +120,38 @@ void IS_step() {
 
     // decide what to issue
     //is_to_ex_sig[1].alu_size;
-    int issued_count = 0, missed_count = 0, alu_count = 0, mdu_count = 0, jmp_count = 0;
+    int issued_count = 0, missed_count = 0, alu_count = 0, mdu_count = 0, jmp_count = 0, csr_count = 0, lsu_count = 0;
     is_to_ex_sig[1].alu_size = 0;
     is_to_ex_sig[1].mdu_size = 0;
     is_to_ex_sig[1].jmp_size = 0;
+    is_to_ex_sig[1].csr_size = 0;
+    is_to_ex_sig[1].lsu_size = 0;
+    for (int i = 0; i < ALU_SIZE; i++) {
+        is_to_ex_sig[1].alu[i].valid = false;
+    }
+    for (int i = 0; i < MDU_SIZE; i++) {
+        is_to_ex_sig[1].mdu[i].valid = false;
+    }
+    for (int i = 0; i < JMP_SIZE; i++) {
+        is_to_ex_sig[1].jmp[i].valid = false;
+    }
+    for (int i = 0; i < CSR_SIZE; i++) {
+        is_to_ex_sig[1].csr[i].valid = false;
+    }
+    for (int i = 0; i < LSU_SIZE; i++) {
+        is_to_ex_sig[1].lsu[i].valid = false;
+    }
+
+    bool head_csr = false;
+    bool blocked_lsu = false;
     for (int i = 0; i < scoreboard_size; ++i) {
+        if (csr_issued || head_csr) continue;
+        if (scoreboard[i].decoded.is_lsu && blocked_lsu) continue;
         if (ready_to_launch(&scoreboard[i].decoded, &scoreboard[i].renamed)) {
             #ifdef DEBUG
-            printf("IS: ready to launch pc %x\n", scoreboard[i].decoded.pc);
+            if (scoreboard[i].valid) {
+                printf("IS: ready to launch pc %x rs1 phy %d rs2 phy %d\n", scoreboard[i].decoded.pc, scoreboard[i].rs1, scoreboard[i].rs2);
+            }
             #endif // DEBUG
             if (!scoreboard[i].valid) {
                 ++missed_count;
@@ -124,18 +174,39 @@ void IS_step() {
                 is_to_ex_sig[1].mdu[issued_count - 1].valid = true;
                 is_to_ex_sig[1].mdu[issued_count - 1].decoded = scoreboard[i].decoded;
                 is_to_ex_sig[1].mdu[issued_count - 1].renamed = scoreboard[i].renamed;
-            } else if (scoreboard[i].decoded.instr_type == TYPE_B || scoreboard[i].decoded.instr_type == TYPE_J) {
+            } else if (scoreboard[i].decoded.is_csr) {
+                is_to_ex_sig[1].csr_size++;
+                csr_count = is_to_ex_sig[1].csr_size;
+                // add to ex channel
+                is_to_ex_sig[1].csr[csr_count - 1].valid = true;
+                is_to_ex_sig[1].csr[csr_count - 1].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].csr[csr_count - 1].renamed = scoreboard[i].renamed;
+                csr_issued = true;
+                csr_instr = scoreboard[i].decoded.instr_idx;
+                printf("Issue csr pc %x idx %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_idx);
+            } else if (scoreboard[i].decoded.instr_type == TYPE_B || scoreboard[i].decoded.instr_type == TYPE_J || scoreboard[i].decoded.branch_type == JALR) {
                 is_to_ex_sig[1].jmp_size++;
                 jmp_count = is_to_ex_sig[1].jmp_size;
                 is_to_ex_sig[1].jmp[jmp_count - 1].valid = true;
                 is_to_ex_sig[1].jmp[jmp_count - 1].decoded = scoreboard[i].decoded;
                 is_to_ex_sig[1].jmp[jmp_count - 1].renamed = scoreboard[i].renamed;
+            } else if (scoreboard[i].decoded.is_lsu) {
+                is_to_ex_sig[1].lsu_size++;
+                lsu_count = is_to_ex_sig[1].lsu_size;
+                is_to_ex_sig[1].lsu[lsu_count - 1].valid = true;
+                is_to_ex_sig[1].lsu[lsu_count - 1].decoded = scoreboard[i].decoded;
+                is_to_ex_sig[1].lsu[lsu_count - 1].renamed = scoreboard[i].renamed;
             }
             
             ++issued_count;
             if (issued_count == ISSUE_SIZE) break;
+        } else if (scoreboard[i].decoded.is_csr) {
+            head_csr = true;
+        } else if (scoreboard[i].decoded.is_lsu) {
+            blocked_lsu = true;
         }
     }
+    
     #ifdef REG_DEBUG
     printf("real issue count %d\n", issued_count);
     #endif
@@ -163,7 +234,7 @@ void IS_step() {
     printf("After squash, scoreboard:\n");
     for (int i = 0; i < ISSUE_QUEUE_SIZE; ++i) {
         if (!scoreboard[i].issued && scoreboard[i].valid)
-        printf("pc %x type %d rs1 ready %d rs2 ready %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1_ready, scoreboard[i].rs2_ready);
+            printf("pc %x type %d rs1 phy %d ready %d rs2 phy %d ready %d\n", scoreboard[i].decoded.pc, scoreboard[i].decoded.instr_type, scoreboard[i].rs1, scoreboard[i].rs1_ready, scoreboard[i].rs2, scoreboard[i].rs2_ready);
     }
     #endif // DEBUG
     if (scoreboard_size + RENAME_MAX > ISSUE_QUEUE_SIZE) {

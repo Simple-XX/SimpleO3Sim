@@ -7,7 +7,7 @@
 void RN_init();
 void RN_step();
 
-#define PRF_SIZE 256
+#define PRF_SIZE 96
 
 // there are at most JMP_DEPTH checkpoints for prf
 #define JMP_DEPTH 96 // should shrink later

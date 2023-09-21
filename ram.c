@@ -11,7 +11,9 @@
 FILE* ram_file_ptr;
 
 char* ram;
+uint16_t *ram_half;
 uint32_t *ram_word;
+uint64_t *ram_double;
 
 struct ram_req iram_req, dram_req;
 struct ram_resp iram_resp, dram_resp;
@@ -28,6 +30,8 @@ void init_ram() {
         assert(load_size < RAM_SIZE);
     }
     ram_word = (uint32_t *)ram;
+    ram_half = (uint16_t *)ram;
+    ram_double = (uint64_t *)ram;
 }
 
 void iram_step() {

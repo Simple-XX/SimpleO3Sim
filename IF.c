@@ -7,7 +7,7 @@ extern struct id_to_if id_to_if_sig[2];
 
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
-uint32_t fetch_pc = RESET_VEC;
+uint64_t fetch_pc = RESET_VEC;
 
 void IF_step() {
     if (jmp_to_is_sig[0].redirect_valid) {

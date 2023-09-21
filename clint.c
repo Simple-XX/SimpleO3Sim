@@ -7,7 +7,7 @@ struct clint_to_lsu clint_to_lsu_sig;
 struct clint_interrupt clint_interrupt_sig[2];
 
 // non-standard width but convenient
-static uint32_t msip, mtime, mtimecmp;
+static uint64_t msip, mtime, mtimecmp;
 
 void clint_step() {
     mtime += 1;

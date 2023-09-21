@@ -11,6 +11,7 @@
 #include "CMT.h"
 #include "fakeCMT.h"
 #include "ram.h"
+#include "diff.h"
 
 extern struct if_to_id if_to_id_sig[2];
 extern struct id_to_if id_to_if_sig[2];
@@ -49,7 +50,6 @@ void move_sigs() {
 	is_to_ex_sig[0] = is_to_ex_sig[1];
 	ex_to_is_sig[0] = ex_to_is_sig[1];
 	cmt_wakeup_sig[0] = cmt_wakeup_sig[1];
-	is_to_ex_sig[0] = is_to_ex_sig[1];
 	ex_to_is_sig[0] = ex_to_is_sig[1];
 	ex_to_cmt_sig[0] = ex_to_cmt_sig[1];
 	cmt_to_ex_sig[0] = cmt_to_ex_sig[1];
@@ -59,6 +59,9 @@ void move_sigs() {
 int main(int argc, char* argv[]) {
 	parse_arg(argc, argv);
 	init_ram();
+	#ifdef DIFFTEST
+	init_diff();
+	#endif
 
 	RN_init();
 	uint64_t global_cycle = 0;

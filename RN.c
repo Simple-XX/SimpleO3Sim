@@ -11,7 +11,7 @@ extern struct is_to_rn is_to_rn_sig[2];
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 // always assign r0 with prf[0]
-uint32_t prf[PRF_SIZE];
+uint64_t prf[PRF_SIZE];
 bool prf_ready[PRF_SIZE];
 
 // free list act as a stack
@@ -58,7 +58,8 @@ struct int_pair alloc_dst(int dst) {
         ret.b = 0;
         return ret;
     }
-    assert(prf_free_list_size > 0);
+    printf("prf_free_list_size %d", prf_free_list_size);
+    assert(prf_free_list_size > 0 && prf_free_list_size <= PRF_SIZE);
     int ret_reg = prf_free_list[--prf_free_list_size];
     // we need to remember its old map so that we can recycle
     // this reg when we commit
@@ -68,10 +69,18 @@ struct int_pair alloc_dst(int dst) {
     ret.a = ret_reg;
     ret.b = old_reg;
     prf_ready[ret_reg] = false;
+    if (ret_reg >= PRF_SIZE) {
+        printf("ret_reg %d prf_free_list_size %d\n", ret_reg, prf_free_list_size);
+    }
+    assert(ret_reg < PRF_SIZE);
     return ret;
 }
 
 void commit_dst(int dst) {
+    assert(dst < PRF_SIZE);
+    if (!(dst >= 0 && dst < PRF_SIZE)) {
+        printf("dst %d\n", dst);
+    }
     assert(dst >= 0 && dst < PRF_SIZE);
     // since instruction commited, we are free to recycle its previous map
     prf_free_list[prf_free_list_size++] = dst;
@@ -81,6 +90,7 @@ void commit_dst(int dst) {
 void RN_step() {
     if (cmt_wakeup_sig[0].valid) {
         for (int i = 0; i < cmt_wakeup_sig[0].commit_size; ++i) {
+            if (cmt_wakeup_sig[0].committed[i].recycle_dst < 0) continue;
             commit_dst(cmt_wakeup_sig[0].committed[i].recycle_dst);
             #ifdef DEBUG
             printf("RN: waking up prf %d\n", cmt_wakeup_sig[0].committed[i].recycle_dst);
@@ -111,6 +121,9 @@ void RN_step() {
                 }
             }
             rn_to_is_sig[1].renamed[i].current_jmp = current_jmp;
+            rn_to_is_sig[1].renamed[i].arch_rd = id_to_rn_sig[0].decoded[i].rd;
+            rn_to_is_sig[1].renamed[i].is_csr = id_to_rn_sig[0].decoded[i].is_csr;
+            rn_to_is_sig[1].renamed[i].csr_instr = id_to_rn_sig[0].decoded[i].instr_idx;
             
             if (id_to_rn_sig[0].decoded[i].instr_type == TYPE_I) {
                 rn_to_is_sig[1].renamed[i].rs2_phy = 0;

@@ -10,17 +10,17 @@ extern struct rn_to_id rn_to_id_sig[2];
 
 extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
-static uint32_t decode_queue[DECODE_QUEUE_SIZE];
-static uint32_t decode_pc[DECODE_QUEUE_SIZE];
+static uint64_t decode_queue[DECODE_QUEUE_SIZE];
+static uint64_t decode_pc[DECODE_QUEUE_SIZE];
 static int decode_queue_start = 0, decode_queue_end = 0, queue_size = 0;
 
 uint64_t global_instr_idx;
 
-static uint32_t imm_expansion(uint32_t imm, int from_bit) {
+static uint64_t imm_expansion(uint64_t imm, int from_bit) {
     // dup since from_bit
-    uint32_t extractor = 1 << from_bit & imm;
-    uint32_t ret = 0;
-    for (int i = 0; i < 32 - from_bit; ++i) {
+    uint64_t extractor = 1 << from_bit & imm;
+    uint64_t ret = 0;
+    for (int i = 0; i < 64 - from_bit; ++i) {
         ret = (ret << 1) | extractor;
     }
     ret |= imm;
@@ -43,10 +43,14 @@ struct decode_info decode(const uint32_t instr) {
     imm_j = ((instr >> 31) << 20) | (((instr >> 12) & 0xff) << 12) | (((instr >> 20) & 1) << 11) | (((instr >> 21) & 0x3ff) << 1);
 
     bool lui, auipc, jal, jalr, beq, bne, blt, bge, bltu, bgeu;
-    bool lb, lh, lw, lbu, lhu, sb, sh, sw, addi, slti, sltiu;
+    bool lb, lh, lw, lbu, lhu, lwu, ld, sb, sh, sw, sd, addi, slti, sltiu;
     bool xori, ori, andi, slli, srli, srai, add, sub, sll, slt;
     bool sltu, xor, srl, sra, or, and;
     bool mul, mulh, mulhu, mulhsu, div, divu, rem, remu;
+    bool addiw, slliw, srliw, sraiw;
+    bool addw, subw, sllw, srlw, sraw;
+    bool csrrs, csrrw, csrrc, csrrsi, csrrwi, csrrci;
+    
 
     lui = opcode == 0x37;
     auipc = opcode == 0x17;
@@ -63,26 +67,38 @@ struct decode_info decode(const uint32_t instr) {
     lw = opcode == 0x3 && funct3 == 0x2;
     lbu = opcode == 0x3 && funct3 == 0x4;
     lhu = opcode == 0x3 && funct3 == 0x5;
+    lwu = opcode == 0x3 && funct3 == 0x6;
+    ld = opcode == 0x3 && funct3 == 0x3;
     sb = opcode == 0x23 && funct3 == 0x0;
     sh = opcode == 0x23 && funct3 == 0x1;
     sw = opcode == 0x23 && funct3 == 0x2;
+    sd = opcode == 0x23 && funct3 == 0x3;
     addi = opcode == 0x13 && funct3 == 0x0;
+    addiw = opcode == 0x1b && funct3 == 0x0;
     slti  = opcode == 0x13 && funct3 == 0x02;
     sltiu = opcode == 0x13 && funct3 == 0x03;
     xori  = opcode == 0x13 && funct3 == 0x04;
     ori   = opcode == 0x13 && funct3 == 0x06;
     andi  = opcode == 0x13 && funct3 == 0x07;
     slli  = opcode == 0x13 && funct3 == 0x01;
+    slliw = opcode == 0x1b && funct3 == 0x01;
     srli  = opcode == 0x13 && funct3 == 0x05 && funct7 == 0x00;
+    srliw = opcode == 0x1b && funct3 == 0x05 && funct7 == 0x00;
     srai  = opcode == 0x13 && funct3 == 0x05 && funct7 == 0x20;
+    sraiw = opcode == 0x1b && funct3 == 0x05 && funct7 == 0x20;
     add   = opcode == 0x33 && funct3 == 0x00 && funct7 == 0x00;
+    addw  = opcode == 0x3b && funct3 == 0x00 && funct7 == 0x00;
     sub   = opcode == 0x33 && funct3 == 0x00 && funct7 == 0x20;
+    subw  = opcode == 0x3b && funct3 == 0x00 && funct7 == 0x20;
     sll   = opcode == 0x33 && funct3 == 0x01 && funct7 == 0x00;
+    sllw  = opcode == 0x3b && funct3 == 0x01 && funct7 == 0x00;
     slt   = opcode == 0x33 && funct3 == 0x02 && funct7 == 0x00;
     sltu  = opcode == 0x33 && funct3 == 0x03 && funct7 == 0x00;
     xor   = opcode == 0x33 && funct3 == 0x04 && funct7 == 0x00;
     srl   = opcode == 0x33 && funct3 == 0x05 && funct7 == 0x00;
+    srlw  = opcode == 0x3b && funct3 == 0x05 && funct7 == 0x00;
     sra   = opcode == 0x33 && funct3 == 0x05 && funct7 == 0x20;
+    sraw  = opcode == 0x3b && funct3 == 0x05 && funct7 == 0x20;
     or    = opcode == 0x33 && funct3 == 0x06 && funct7 == 0x00;
     and   = opcode == 0x33 && funct3 == 0x07 && funct7 == 0x00;
     mul   = opcode == 0x33 && funct3 == 0x00 && funct7 == 01;
@@ -93,34 +109,56 @@ struct decode_info decode(const uint32_t instr) {
     divu  = opcode == 0x33 && funct3 == 0x05 && funct7 == 01;
     rem   = opcode == 0x33 && funct3 == 0x06 && funct7 == 01;
     remu  = opcode == 0x33 && funct3 == 0x07 && funct7 == 01;
+    csrrc = opcode == 0x73 && funct3 == 0x3;
+    csrrs = opcode == 0x73 && funct3 == 0x2;
+    csrrw = opcode == 0x73 && funct3 == 0x1;
+    csrrci= opcode == 0x73 && funct3 == 0x7;
+    csrrsi= opcode == 0x73 && funct3 == 0x6;
+    csrrwi= opcode == 0x73 && funct3 == 0x5;
 
     ret.is_branch = beq | bne | blt | bge | bltu | bgeu;
-    ret.is_lsu = lb | lh | lw | lbu | lhu | sb | sh | sw;
-    ret.is_load = lb | lh | lw | lbu | lhu ;
-    ret.is_store = sb | sh | sw;
+    ret.is_lsu = lb | lh | lw | ld | lbu | lhu | lwu | sb | sh | sw | sd;
+    ret.is_load = lb | lh | lw | ld | lwu | lbu | lhu;
+    ret.is_store = sb | sh | sw | sd;
+    ret.is_csr = csrrc | csrrs | csrrw | csrrci | csrrsi | csrrwi;
+    ret.csr_type = csrrc ? CSRRC :
+                   csrrs ? CSRRS :
+                   csrrw ? CSRRW :
+                   csrrci ? CSRRCI :
+                   csrrsi ? CSRRSI :
+                   csrrwi ? CSRRWI : 0xff;
     ret.lsu_type = sb ? SB :
                    sh ? SH :
                    sw ? SW :
+                   sd ? SD :
                    lb ? LB :
                    lh ? LH :
                    lw ? LW :
+                   ld ? LD :
                    lbu ? LBU :
-                   lhu ? LHU : 0xff;
+                   lhu ? LHU :
+                   lwu ? LWU : 0xff;
     ret.is_alu = lui | auipc | addi | slti | sltiu | xori | ori | andi | slli |
                  srli | srai | add | sub | sll | slt | sltu | xor | srl | sra |
-                 or | and;
+                 or | and | addiw | slliw | srliw | sraiw | addw | subw | sllw |
+                 srlw | sraw;
     ret.is_mdu = mul | mulh | mulhu | mulhsu | div | divu | rem | remu;
     ret.alu_type = lui ? LUI :
                    auipc ? AUIPC :
                    (addi | add) ? ADD :
+                   (addiw | addw) ? ADDW :
                    (slti | slt) ? SLT :
                    (sltu | sltiu) ? SLTU :
                    (xori | xor) ? XOR :
                    (ori | or) ? OR :
                    (andi | and) ? AND :
                    (slli | sll) ? SLL :
+                   (slliw | sllw) ? SLLW :
                    (srli | srl) ? SRL :
+                   (srliw | srlw) ? SRLW :
                    (srai | sra) ? SRA :
+                   (sraiw | sraw) ? SRAW :
+                   subw ? SUBW :
                    sub ? SUB : 0xff;
     ret.mdu_type = mul ? MUL :
                    mulh ? MULH :
@@ -130,10 +168,10 @@ struct decode_info decode(const uint32_t instr) {
                    divu ? DIVU :
                    rem ? REM :
                    remu ? REMU : 0xff;
-    bool shift_imm = slli | srli | srai;
-    bool type_i = jalr | lb | lh | lw | lbu | lhu |
-      addi | slti | sltiu | xori | ori | andi;
-    bool type_s = sb | sh | sw;
+    bool shift_imm = slli | srli | srai | slliw | srliw | sraiw;
+    bool type_i = jalr | lb | lh | lw | ld | lbu | lhu | lwu |
+      addi | slti | sltiu | xori | ori | andi | addiw | csrrc | csrrs | csrrw | csrrci | csrrsi | csrrwi;
+    bool type_s = sb | sh | sw | sd;
     bool type_b = beq | bne | blt | bge | bltu | bgeu;
     int branch_type = beq ? BEQ :
                       bne ? BNE :
@@ -147,6 +185,7 @@ struct decode_info decode(const uint32_t instr) {
     bool type_u = lui | auipc;
     bool type_j = jal;
     bool type_r = slli | srli | srai |
+      slliw | srliw | sraiw | addw | subw | sllw | srlw | sraw |
       add | sub | sll| slt | sltu | xor | srl |
       sra | or | and;
 
@@ -161,7 +200,8 @@ struct decode_info decode(const uint32_t instr) {
     ret.imm = type_i ? imm_expansion(imm_i, 11):
               type_s ? imm_expansion(imm_s, 11):
               type_b ? imm_expansion(imm_b, 12):
-              type_u ? imm_u :
+              type_u ? imm_expansion(imm_u, 31) :
+              type_r ? rs2 :
               type_j ? imm_expansion(imm_j, 20): 0;
     ret.rs1 = rs1;
     ret.rs2 = rs2;
@@ -175,6 +215,7 @@ struct decode_info decode(const uint32_t instr) {
 // i.e. if we have more branch than expected, only send some of them to rename
 void ID_step() {
     if (jmp_to_is_sig[0].redirect_valid) {
+        printf("ID redirect handling\n");
         // flush the entire queue
         decode_queue_start = 0;
         decode_queue_end = 0;

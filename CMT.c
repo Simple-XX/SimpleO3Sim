@@ -1,4 +1,6 @@
 #include "CMT.h"
+#include "utils.h"
+#include "diff.h"
 
 extern struct ex_to_cmt ex_to_cmt_sig[2];
 struct cmt_to_ex cmt_to_ex_sig[2];
@@ -9,16 +11,16 @@ extern struct jmp_redirectInfo jmp_to_is_sig[2];
 
 #ifdef REG_DEBUG
 #include "RN.h"
-uint32_t cmt_arf[32];
+uint64_t cmt_arf[32];
 
 char* reg_name[32] = {"x0", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0/fp", "s1", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"};
 
-extern uint32_t prf[PRF_SIZE];
+extern uint64_t prf[PRF_SIZE];
 #endif // REG_DEBUG
 
 #include "RN.h"
 
-extern uint32_t prf[PRF_SIZE];
+extern uint64_t prf[PRF_SIZE];
 extern bool prf_ready[PRF_SIZE];
 
 // commit_head: the index of the instruction that
@@ -31,6 +33,7 @@ uint64_t commit_head, rob_offset;
 
 struct commitInfo rob[ROB_SIZE];
 
+struct diff_context_t regs;
 
 /*
  * ROB here is a loop queue
@@ -55,6 +58,7 @@ void CMT_step() {
         printf("alu unit wants to commit %d instrs\n", ex_to_cmt_sig[0].alu_size);
         #endif // DEBUG
         for (int i = 0; i < ex_to_cmt_sig[0].alu_size; ++i) {
+            printf("alu commit idx %llu\n", ex_to_cmt_sig[0].alu[i].idx % ROB_SIZE);
             rob[ex_to_cmt_sig[0].alu[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].alu[i];
         }
         //rob_offset += ex_to_cmt_sig[0].alu_size;
@@ -71,7 +75,14 @@ void CMT_step() {
         for (int i = 0; i < ex_to_cmt_sig[0].lsu_size; ++i) {
             rob[ex_to_cmt_sig[0].lsu[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].lsu[i];
         }
+        #ifdef DEBUG
+        printf("csr unit wants to commit %d instrs\n", ex_to_cmt_sig[0].csr_size);
+        #endif // DEBUG
         //rob_offset += ex_to_cmt_sig[0].lsu_size;
+        for (int i = 0; i < ex_to_cmt_sig[0].csr_size; ++i) {
+            printf("idx %llu\n", ex_to_cmt_sig[0].csr[i].idx % ROB_SIZE);
+            rob[ex_to_cmt_sig[0].csr[i].idx % ROB_SIZE] = ex_to_cmt_sig[0].csr[i];
+        }
     }
 
     #ifdef DEBUG
@@ -86,31 +97,58 @@ void CMT_step() {
     }
 
     int commit_counter = 0;
+    printf("commit head %llu\n", commit_head);
     while (1) {
         // commit until not valid
         if (rob[commit_head].slot_valid) {
             rob[commit_head].slot_valid = false; // clear after commit
             #ifdef DEBUG
-            printf("rob real commit: pc 0x%x instr idx = %llu\n", rob[commit_head].pc, rob[commit_head].idx);
+            printf("rob real commit: pc 0x%x instr idx = %llu ard %d rd data 0x%x\n", rob[commit_head].pc, rob[commit_head].idx, rob[commit_head].ard, rob[commit_head].rd_data);
             #endif // DEBUG
             // ready to commit
             
+            printf("rd valid %d rd_phy %d\n", rob[commit_head].rd_valid, rob[commit_head].renamed.rd_phy.a);
             // handle register write
-            if (rob[commit_head].rd_valid && rob[commit_head].renamed.rd_phy.a != 0) {
+            if (rob[commit_head].rd_valid && rob[commit_head].renamed.arch_rd != 0) {
                 prf[rob[commit_head].renamed.rd_phy.a] = rob[commit_head].rd_data;
                 prf_ready[rob[commit_head].renamed.rd_phy.a] = true;
 
                 #ifdef REG_DEBUG
                 if (rob[commit_head].ard != 0) {
                     cmt_arf[rob[commit_head].ard] = rob[commit_head].rd_data;
+                    printf("arf reg %d write data 0x%x\n", rob[commit_head].ard, rob[commit_head].rd_data);
                 }
                 printf("rob phy reg %d write data 0x%x\n", rob[commit_head].renamed.rd_phy.a, rob[commit_head].rd_data);
-                
-                #endif // REG_DEBUG
+
             }
+            #ifdef DIFFTEST
+            // difftest check here
+            spike_exec(1);
+            regcpy((void *)&regs, DIFF2RTL);
+            for (int i = 0; i < 32; i++) {
+                if (regs.gpr[i] != cmt_arf[i]) {
+                    printf("reg %d mismatch: Spike 0x%llx, O3Sim 0x%llx\n", i, regs.gpr[i], cmt_arf[i]);
+                    assert(0);
+                }
+            }
+            printf("Difftest pass this cycle\n");
+            isa_reg_display();
+            #endif // DIFFTEST
+            
+            #endif // REG_DEBUG
             
             // handle memory write
-            cmt_wakeup_sig[1].committed[commit_counter].recycle_dst = rob[commit_head].renamed.rd_phy.b;
+            if (rob[commit_head].rd_valid && rob[commit_head].renamed.arch_rd != 0) {
+                cmt_wakeup_sig[1].committed[commit_counter].recycle_dst = rob[commit_head].renamed.rd_phy.a;
+            } else {
+                cmt_wakeup_sig[1].committed[commit_counter].recycle_dst = -1;
+            }
+            if (rob[commit_head].renamed.is_csr) {
+                cmt_wakeup_sig[1].committed[commit_counter].is_csr = true;
+                cmt_wakeup_sig[1].committed[commit_counter].csr_instr = rob[commit_head].renamed.csr_instr;
+            } else {
+                cmt_wakeup_sig[1].committed[commit_counter].is_csr = false;
+            }
             ++commit_counter;
             commit_head = (commit_head + 1) % ROB_SIZE;
             if (commit_counter >= COMMIT_SIZE) {

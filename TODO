@@ -1,2 +1,32 @@
 1. handling of jmp instructions
 2. implementation of csr and machine mode
+
+## tested instrs
+
+add addi addw addiw
+
+and andi auipc beq bge bgeu blt bltu bne
+
+or ori sll slli slliw sllw slt slti sltiu sltu
+
+sra srai sraiw sraw
+
+srl srli srliw srlw
+
+sub subw xor xori lui
+
+jalr
+
+csrrwi csrrci csrrsi
+csrrw csrrc csrrs
+
+lb lh lw ld lbu lhu lwu
+sb sh sw sd
+
+## failed
+
+Cleared
+
+## todo
+
+Cleared
